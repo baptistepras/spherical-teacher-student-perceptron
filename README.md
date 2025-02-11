@@ -24,10 +24,10 @@ In main.py, you can adjust the following hyperparameters when calling the `exec(
 - loss: The loss to use (`hinge`, `perceptron` or `square`. `square` isn't usable on the gradient method)
 - method: The method to use to train the student (`gradient` or `langevin`)
 
-Here is an example of every function in the main:
-`save_data(N=5000, D=500, bias=-1.0, noise_std=1.0)`: Save a dataset of size 5000x500, with a bias of -1 and a noise of 1
-`X, Y, w, b = fetch_data(N=5000, D=500, bias=-1.0, noise_std=1.0)`: Fetch the dataset (creates it if it doesn't exist)
-`delete_data(N=5000, D=500, bias=-1, all=False)`: Delete the dataset (if all=True, delete all datasets)
+Here is an example of every function in the main:  
+`save_data(N=5000, D=500, bias=-1.0, noise_std=1.0)`: Save a dataset of size 5000x500, with a bias of -1 and a noise of 1  
+`X, Y, w, b = fetch_data(N=5000, D=500, bias=-1.0, noise_std=1.0)`: Fetch the dataset (creates it if it doesn't exist)  
+`delete_data(N=5000, D=500, bias=-1, all=False)`: Delete the dataset (if all=True, delete all datasets)  
 `exec(X=X, Y=Y, loss='perceptron', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=-1.0, noise_std=1.0)`: Launch the program for the student, given your parameters
 
 # Warnings

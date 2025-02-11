@@ -18,12 +18,12 @@ Il permet de :
 
 Fonctions :
 
-1. save_data(N:int=500, D:int=50, bias:float=-1) -> None
+1. save_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1) -> None
    - Génère les données de base, simule le modèle Teacher,
      et sauvegarde les jeux de données dans le dossier "Baptiste/data".
      Si un dataset avec ces paramètres existe déjà, l'écrase.
 
-2. fetch_data(N:int=500, D:int=50, bias:float=-1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]
+2. fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]
    - Charge et retourne un jeu de données sauvegardé depuis le dossier "Baptiste/data" sous la forme d'un tuple (X, Y, w, b).
      Si aucun dataset avec ces paramètres n'existe, le créé.
 
@@ -40,15 +40,16 @@ from utils import *
 
 # Sauvegarde un data set dans le dossier data (chatGPT)
 # Écrase des données déjà existantes pour les mêmes paramètres
-def save_data(N:int=500, D:int=50, bias:float=-1) -> None:
+def save_data(N:int=500, D:int=50, bias:float=-1.0, noise_std:float=1.0) -> None:
     """
     N: Nombre de points de données à générer
     D: Dimension des données à générer
     bias : Biais à utiliser pour le teacher
+    noise_std: Le bruit à appliquer
     """
     # Génération des données de base
     X = generate(N=N, D=D)
-    Y_base, w_base, b_base = teacher(X=X, bias=bias, noise_std=1.0, show=False)
+    Y_base, w_base, b_base = teacher(X=X, bias=bias, noise_std=noise_std, show=False)
 
     # Crée le dossier de destination
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -64,17 +65,18 @@ def save_data(N:int=500, D:int=50, bias:float=-1) -> None:
 
 # Récupère le jeu de données voulu (chatGPT)
 # Si les données n'existe pas, les créé
-def fetch_data(N:int=500, D:int=50, bias:float=-1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     """
     N: Nombre de points de données du dataset à fetch
     D: Dimension des données du dataset à fetch
     bias : Biais du teacher à fetch
+    noise_std: Le bruit à appliquer
     Return: Les données sauvegardés (X, Y, w, b).
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(base_dir, "data", f"N{N}_D{D}_b{bias:.1f}.npz")
     if not os.path.exists(file_path):
-        save_data(N=N, D=D, bias=bias)
+        save_data(N=N, D=D, bias=bias, noise_std=noise_std)
     loaded = np.load(file_path)
 
     # On récupère le dictionnaire puis on extrait chacun des tableaux
@@ -156,7 +158,8 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
 N = 5000
 D = 500
 bias = -1.5
-# save_data(N=N, D=D, bias=bias)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
-X, Y, w, b = fetch_data(N=N, D=D, bias=bias)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
+noise_std = 1.0
+# save_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
+X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
 # delete_data(N=N, D=D, bias=bias, all=True)
-exec(X=X, Y=Y, loss='perceptron', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b)
+exec(X=X, Y=Y, loss='perceptron', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)

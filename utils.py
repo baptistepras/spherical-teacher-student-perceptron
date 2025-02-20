@@ -21,7 +21,7 @@ Fonctions :
 2. pca(X:np.ndarray, variance:float=0.95) -> np.ndarray
    - Applique la PCA pour réduire la dimensionnalité des données.
 
-3. teacher(X:np.ndarray, bias:float=-1, noise_std:float=1, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]
+3. teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=1.0, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]
    - Simule un modèle enseignant (Teacher) pour générer des étiquettes.
 
 4. student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple[np.ndarray, float, Callable, Callable, Callable]
@@ -34,20 +34,21 @@ Fonctions :
    - Crée un déséquilibre de classe dans les données.
 
 7. apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient: Callable, 
-                  fmethod:Callable, eta:float=0.1, maxiter:int=1000) -> Tuple[np.ndarray, float]
+                  fmethod:Callable, eta:float=0.1, maxiter:int=100) -> Tuple[np.ndarray, float]
    - Entraîne le modèle étudiant en utilisant une méthode d'optimisation.
 
 8. score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float
    - Évalue la précision du modèle sur un ensemble de données.
 
 9. cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, 
-                  maxiter:int=1000, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float]]:
+                  maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float]]:
    - Effectue une cross-validation et renvoie les résultats sur train et test
 
 10. intraseque(Y:np.ndarray) -> float
    - Renvoie le taux de déséquilibre intrasèque de Y.
 
-11. show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float, w_student:np.ndarray, b_student:float) -> None
+11. show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float, w_student:np.ndarray, b_student:float, 
+              dim:int=2, ptrain:float=None, ptest:float=None) -> None
    - Affiche les données en 2D avec les frontières de décision des modèles Teacher et Student.
 
 12. show_perf(scores_train:List[float], scores_test:List[float]) -> None
@@ -56,6 +57,10 @@ Fonctions :
 13. show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain:List[float], p0:float, 
                          save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None
    - Affiche les performances sur train et test selon le ptrain choisi (avec ptest intrasèque).
+
+14. show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:List[float], p0:float, 
+                         save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None
+   - Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque).
 
 """
 
@@ -114,7 +119,7 @@ def pca(X:np.ndarray, variance:float=0.95) -> np.ndarray:
 
 
 # Implémentation du teacher
-def teacher(X:np.ndarray, bias:float=-1, noise_std:float=1, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]:
+def teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=1.0, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
     bias: Le biais choisi (un biais négatif dans notre étude)
@@ -317,7 +322,7 @@ def imbalance(X:np.ndarray, Y:np.ndarray, rate:float=None) -> Tuple[np.ndarray, 
 
 
 # Apprentissage du student
-def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=1000, 
+def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=100, 
                   ) -> Tuple[np.ndarray, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
@@ -352,7 +357,7 @@ def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float:
 
 # Cross-validation sur le train et test sets
 def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, 
-                   maxiter:int=1000, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float]]:
+                   maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float]]:
     """
     X: Points de données (un ndarray de taille (N, D))
     Y: Valeur de vérité des points de données (un ndarray de taille N)
@@ -405,8 +410,8 @@ def intraseque(Y:np.ndarray) -> float:
 
 
 # Affiche le jeu de données avec le teacher et le student (partiellement chatGPT)
-def show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float, w_student:np.ndarray, b_student:float,
-         pca:int=None, dim:int=2, ptrain:float=None, ptest:float=None) -> None:
+def show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float, w_student:np.ndarray, b_student:float, 
+              dim:int=2, ptrain:float=None, ptest:float=None) -> None:
     """
     X: Points de données (un ndarray de taille (N, D))
     Y: Valeur de vérité des points de données (un ndarray de taille N)
@@ -414,7 +419,6 @@ def show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float,
     b_teacher: Le biais du teacher
     w_student: Vecteur des poids du student (un ndarray de taille D)
     b_student: Le biais du student
-    pca: Nombre de dimensions après PCA si une PCA a été appliquée, None sinon
     dim: Nombre de dimensions avant PCA
     ptrain: Taux de déséquilibre dans ptrain, None si ptrain=p0 (taux de déséquilibre intrasèque)
     ptest: Taux de déséquilibre dans ptest, None si ptest=p0 (taux de déséquilibre intrasèque)
@@ -438,15 +442,9 @@ def show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float,
     ax.plot(xxs, yys, '--', color='green', label='Student boundary')
     
     # Affichage
-    legend = (f"Dimension de base: {dim}\n"
-              f"Dimension après PCA: {pca if pca is not None else 'Pas de PCA'}\n"
-              f"Taux déséquilibre Train: {ptrain if ptrain is not None else 'Intrasèque'}\n"
-              f"Taux déséquilibre Test: {ptest if ptest is not None else 'Intrasèque'}")
-    ax.text(0.05, 0.95, legend, transform=ax.transAxes, fontsize=12, verticalalignment='top', 
-            bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
     ax.set_xlim([x_min-0.5, x_max+0.5])
     ax.set_ylim([y_min-0.5, y_max+0.5])
-    ax.set_title("Spherical Teacher–Student perceptron")
+    ax.set_title("Spherical Teacher–Student Perceptron")
     ax.set_xticks([])
     ax.set_yticks([])
     ax.legend()
@@ -527,7 +525,69 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
         base_dir = os.path.dirname(os.path.abspath(__file__))
         folder = os.path.join(base_dir, "plots")
         os.makedirs(folder, exist_ok=True)
-        filename = os.path.join(folder, f"N{N}_D{D}_b{bias:.1f}_{loss}_{method}.jpg")
+        filename = os.path.join(folder, f"TRAIN_N{N}_D{D}_b{bias:.1f}_{loss}_{method}.jpg")
+        fig.savefig(filename, bbox_inches='tight', dpi=300)
+        print(f"Affichage sauvegardé sous: {filename}")
+    plt.show()
+
+
+# Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque) (partiellement chatGPT)
+def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:List[float], p0:float, 
+                         save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
+    """
+    train: Liste des différentes cross-validation sur chaque valeur de ptrain pour train
+    test: Liste des différentes cross-validation sur chaque valeur de ptrain pour test
+    ptrain: Liste de chaque valeur de ptrain
+    p0: Le taux de déséquilibre intrasèque du dataset
+    save: Si None ne rien faire, sinon, sauvegarde le plot dans /plots. Les valeurs dans save sont:
+          N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method
+    """
+    # Calcul des moyennes et écarts-types
+    means_train = [np.mean(scores) for scores in train]
+    std_train   = [np.std(scores)  for scores in train]
+    means_test = [np.mean(scores) for scores in test]
+    std_test   = [np.std(scores)  for scores in test]
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Tracer les résultats pour chaque valeur de ptrain
+    for i, p in enumerate(ptest):
+        ax.scatter([p]*len(train[i]), train[i], color='blue', alpha=0.4, label='Train' if i == 0 else "")
+        ax.scatter([p]*len(test[i]), test[i], color='orange', alpha=0.4, marker='s', label='Test' if i == 0 else "")
+
+    # Tracer la moyenne
+    ax.plot(ptest, means_train, color='blue', linewidth=2, linestyle='-', label='Train Mean')
+    ax.plot(ptest, means_test, color='orange', linewidth=2, linestyle='-', label='Test Mean')
+    
+    # Remplir l'espace autour de la moyenne avec ±1 écart-type
+    ax.fill_between(ptest, [m - s for m, s in zip(means_train, std_train)], 
+                    [m + s for m, s in zip(means_train, std_train)], color='blue', alpha=0.1, label='Train Std Dev')
+    ax.fill_between(ptest,[m - s for m, s in zip(means_test, std_test)],
+                    [m + s for m, s in zip(means_test, std_test)], color='orange', alpha=0.1, label='Test Std Dev')
+    
+    # Légende hyper-paramètres
+    if save is not None:
+        N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method = save
+        textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
+                   f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
+                   f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
+        props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
+        ax.text(1.05, 0.5, textstr, transform=ax.transAxes, fontsize=12, verticalalignment='center', bbox=props)
+
+    # Affichage
+    ax.set_xlabel("pTest")
+    ax.set_ylabel("Balanced Accuracy")
+    ax.set_title(f"Cross-Validation over 42 different re-sampling of the test set")
+    ax.legend()
+    ax.grid(True)
+    fig.subplots_adjust(right=0.75)
+
+    # Sauvegarde des données
+    if save is not None:
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        folder = os.path.join(base_dir, "plots")
+        os.makedirs(folder, exist_ok=True)
+        filename = os.path.join(folder, f"TEST_N{N}_D{D}_b{bias:.1f}_{loss}_{method}.jpg")
         fig.savefig(filename, bbox_inches='tight', dpi=300)
         print(f"Affichage sauvegardé sous: {filename}")
     plt.show()
@@ -535,10 +595,10 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
 
 # Exemple d'utilisation
 """
-N, D, bias = 500, 50, -1
-eta, maxiter, test_size, n_splits, noise_std = 0.1, 100, 0.2, 10, 1.0
+N, D, bias = 2000, 2, -1
+eta, maxiter, test_size, n_splits, noise_std = 0.1, 100, 0.2, 10, 0.0
 X = generate(N=N, D=D, show=False)
-Y, w_teacher, b_teacher = teacher(X=X, bias=bias, noise_std=noise_std, show=False)
+Y, w_teacher, b_teacher = teacher(X=X, bias=bias, noise_std=noise_std, show=True)
 w_init, b_init, floss, fgradient, fmethod = student(X=X, loss='perceptron', method='gradient')
 X_train, X_test, Y_train, Y_test = split(X=X, Y=Y, test_size=test_size)
 X_train, Y_train = imbalance(X=X_train, Y=Y_train, rate=0.5)
@@ -547,7 +607,7 @@ print(Y_train.mean(), Y_test.mean(), Y.mean())
 print(score(X_train, Y_train, w_student, b_student))
 print(score(X_test, Y_test, w_student, b_student))
 show_data(X=X, Y=Y, w_teacher=w_teacher, b_teacher=b_teacher, w_student=w_student, b_student=b_student, 
-     dim=X.shape[1], pca=None, ptrain=0.5, ptest=None)
+          dim=X.shape[1], ptrain=0.5, ptest=None)
 scores_train1, scores_test1 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
                                              maxiter=maxiter, test_size=test_size, n_splits=n_splits, ptrain=None, ptest=None)
 scores_train2, scores_test2 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 

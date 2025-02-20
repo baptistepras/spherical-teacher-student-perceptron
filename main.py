@@ -9,7 +9,7 @@ Ce module constitue le point d'entrée pour tester et sauvegarder les données g
 Il permet de :
 - Générer des données synthétiques à l'aide des fonctions définies dans utils.py.
 - Simuler un modèle enseignant (Teacher) afin de générer des étiquettes.
-- Sauvegarder les jeux de données dans le dossier "Baptiste/data".
+- Sauvegarder les jeux de données dans le dossier "data".
   Les noms incluent les paramètres N, D et le biais pour une identification aisée.
 - Charger (fetch) un jeu de données sauvegardé et afficher son contenu.
 - Éxecuter sur un dataset donné et avec ses hyper-paramètres choisis, une cross-validation
@@ -20,19 +20,23 @@ Fonctions :
 
 1. save_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1) -> None
    - Génère les données de base, simule le modèle Teacher,
-     et sauvegarde les jeux de données dans le dossier "Baptiste/data".
+     et sauvegarde les jeux de données dans le dossier "data".
      Si un dataset avec ces paramètres existe déjà, l'écrase.
 
 2. fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]
-   - Charge et retourne un jeu de données sauvegardé depuis le dossier "Baptiste/data" sous la forme d'un tuple (X, Y, w, b).
+   - Charge et retourne un jeu de données sauvegardé depuis le dossier "data" sous la forme d'un tuple (X, Y, w, b).
      Si aucun dataset avec ces paramètres n'existe, le créé.
 
 3. delete_data(N:int=500, D:int=50, bias:float=-1, all:bool=False) -> None
-  - Supprime le fichier ciblé, si all=True, tous les fichiers .npz dans data seront supprimés
+  - Supprime le fichier ciblé, si all=True, tous les fichiers .npz dans data seront supprimés.
 
 4. exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
          test_size:float=0.2, ptrain:float=None, ptest:float=None, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1) -> None
-   - Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné).
+   - Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné.
+
+5. exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
+         test_size:float=0.2, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1, noise_std:float=1.0) -> None
+    - Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné.
 """
 
 from utils import *
@@ -120,7 +124,7 @@ def delete_data(N:int=500, D:int=50, bias:float=-1, all:bool=False) -> None:
             print(f"Aucun fichier trouvé pour les paramètres N={N}, D={D}, bias={bias}.")
 
 
-# Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné)
+# Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné
 def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
          test_size:float=0.2, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1, noise_std:float=1.0) -> None:
     """
@@ -152,14 +156,48 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
     # Affiche les résultats
     show_perf_per_ptrain(train=train, test=test, ptrain=ptrain, p0=p0, 
                          save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
+    
+# Effectue une cross-validation sur tous les ptest possibles pour un dataset donné
+def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
+         test_size:float=0.2, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1, noise_std:float=1.0) -> None:
+    """
+    X: Points de données (un ndarray de taille (N,D))
+    Y: Valeur de vérité des points (un ndarray de taille N)
+    loss: Fonction de loss à utiliser ('perceptron', 'hinge', 'square')
+    method: Méthode d'entraînement à utiliser ('gradient', 'langevin')
+    test_size: La taille du set de test (0.0 -> 1.0)
+    eta: Le taux d'apprentissage
+    maxiter: Le nombre d'itérations à faire
+    n_splits: Le nombre de plis de cross-validation
+    bias: Le biais du Teacher
+    noise_std: Le bruit appliqué
+    """
+    N, D = X.shape
+    w_init, b_init, floss, fgradient, fmethod = student(X=X, loss=loss, method=method)
+    train = []
+    test = []
+    ptest = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
+    p0 = intraseque(Y=Y)
+
+    # Cross-validation
+    for p in ptest:
+      res = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, maxiter=maxiter, 
+                           test_size=test_size, n_splits=n_splits, ptrain=None, ptest=p)
+      train.append(res[0])
+      test.append(res[1])
+
+    # Affiche les résultats
+    show_perf_per_ptest(train=train, test=test, ptest=ptest, p0=p0, 
+                         save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
 
 
 # Exemple d'utilisation
-N = 5000
-D = 500
+N = 1000
+D = 100
 bias = -1.5
 noise_std = 1.0
 # save_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
 # delete_data(N=N, D=D, bias=bias, all=True)
-exec(X=X, Y=Y, loss='perceptron', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)
+#exec(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
+exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest

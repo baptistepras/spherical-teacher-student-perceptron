@@ -1,6 +1,6 @@
 # Spherical Teacher-Student Perceptron
 
-Implementation from scratch of a Spherical Teacher-Student Perceptron, using Python and Numpy (and a bit of Scikit-Learn), and using MatPlotLib for graphics. This project was carried out as part of a research internship on class imbalance in image classification at the LISN, supervised by François LANDES. It focuses on studying class imbalance in image classification using a spherical Teacher-Student perceptron. This approach helps analyze how imbalanced training data affects the performance in classification models.
+Implementation from scratch of a Spherical Teacher-Student Perceptron, using Python and Numpy (and a bit of Scikit-Learn), and using MatPlotLib for graphics. This project was carried out as part of a research internship at the LISN, supervised by François LANDES. It focuses on studying class imbalance in classification tasks, using a spherical Teacher-Student perceptron. This approach helps analyze how imbalanced training data affects the performance in classification models.
 
 # What does it do ?
 

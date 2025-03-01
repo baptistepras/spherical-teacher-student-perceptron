@@ -2,6 +2,8 @@
 
 Implementation from scratch of a Spherical Teacher-Student Perceptron, using Python and Numpy (and a bit of Scikit-Learn), and using MatPlotLib for graphics. This project was carried out as part of a research internship at the LISN, supervised by François LANDES. It focuses on studying class imbalance in classification tasks, using a spherical Teacher-Student perceptron. This approach helps analyze how imbalanced training data affects the performance in classification models.
 
+The internship subject was based on a paper published by François LANDES: https://arxiv.org/abs/2501.11638
+
 # What does it do ?
 
 The program generates synthetic `Gaussian-distributed data` and assigns class labels using a `Teacher-Student perceptron model`. To make classification more challenging, `noise` is added to prevent the dataset from being `trivially linearly separable`. The generated dataset is then stored in the `/data` folder.

@@ -26,6 +26,8 @@ In main.py, you can adjust the following hyperparameters when calling the `exec(
 - loss: The loss to use (`hinge`, `perceptron` or `square`. `square` isn't usable on the gradient method)
 - method: The method to use to train the student (`gradient` or `langevin`)
 
+For the `langevin` method, the parameters `T` and `maxiter` can be changed directly in the sub-function `fmethod` in the `langevin-if branch`, in the function `student`. The parameters passed in the function `apprentissage` will not impact those.
+
 Here is an example of every function in the main:  
 `save_data(N=5000, D=500, bias=-1.0, noise_std=1.0)`: Save a dataset of size 5000x500, with a bias of -1 and a noise of 1  
 `X, Y, w, b = fetch_data(N=5000, D=500, bias=-1.0, noise_std=1.0)`: Fetch the dataset (creates it if it doesn't exist)  
@@ -42,7 +44,7 @@ The loss `square` cannot be used with the method `gradient`.
 
 To introduce noise, I use a method of perturbating the frontier. But I also implemented one randomly flipping the class of some points. This can be used instead by uncommenting it in the function `teacher` in the file `utils.py` (don't forget to comment the other method if you do so, and change the value of `noise_std`, a good value for this method would be `0.1 or 0.05`).
 
-The program can quickly become long. For instance, using `maxiter=100` and `10 folds` for the cross-validation, the `gradient method` takes approximately `10 minutes` on my machine for a dataset of size `5000x500`.
+The program can quickly become long. For instance, using `maxiter=100` and `10 folds` for the cross-validation, the `gradient method` takes approximately `10 minutes` on my machine for a dataset of size `5000x500`. For the same dataset, the `langevin` method will take approximately 12 hours if you keep `maxiter=7000`.
 
 This project uses a `set random_state` to reproduct the results. This parameter can be changed at the top of `utils.py`: `np.random.seed(424242)`
 

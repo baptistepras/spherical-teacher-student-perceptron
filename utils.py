@@ -5,6 +5,8 @@ Ce module fournit des fonctions pour les actions suivantes:
 - Générer des données synthétiques.
 - Appliquer une analyse en composantes principales (PCA).
 - Simuler un modèle de perceptron Teacher-Student sphérique.
+- Définir un perceptron avec différentes loss (perceptron et hinge)
+  et différentes méthodes d'apprentissage (gradient et langevin).
 - Déséquilibrer les classes.
 - Séparer les données en ensembles d'entraînement et de test.
 - Évaluer les performances d'un modèle.
@@ -72,6 +74,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 from typing import Tuple, Callable, List
+from time import time
 np.random.seed(424242)
 np.set_printoptions(threshold=6)
 
@@ -245,7 +248,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
 
     # Méthode d'apprentissage
     if method=='gradient':
-        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=1000, 
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100, 
                     ) -> Tuple[np.ndarray, float] :
             """
             X: Points de données (un ndarray de taille (N,D))
@@ -271,7 +274,67 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 bias += b_temp
             return w0, bias
     elif method=='langevin':
-        raise NotImplementedError(f"La méthode {method} n'est pas implémentée.")
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100,
+                    ) -> Tuple[np.ndarray, float] :
+            """
+            X: Points de données (un ndarray de taille (N,D))
+            Y: Valeur de vérité des points (un ndarray de taille N)
+            w: Vecteur des poids (un ndarray de taille D)
+            bias: Le biais du perceptron
+            floss: La fonction de loss à utiliser
+            fgradient: La fonction de gradient à utiliser (on peut l'ignorer pour cette méthode)
+            eta: Le taux d'apprentissage (on peut l'ignorer pour cette méthode)
+            maxiter: Le nombre d'itérations à faire (défini manuellement pour cette méthode)
+            Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
+            """
+            N, D = X.shape
+            T = 0.01  # Température à régler
+            maxiter = 7000  # Maxiter à régler
+            w0 = w.copy()
+            amplitude = X.max() - X.min()
+            sigma_w = amplitude / 10.0  # On garde 1/10 de l'amplitude des données
+            sigma_b = amplitude / 10.0  
+            vec_E = []  # Sauvegarde des différentes énergies
+            vec_score = []  # Sauvegarde des différents scores
+
+            # Fonction de calcul de l'énergie E
+            def energy(w_local: np.ndarray, b_local: float, X: np.ndarray, Y: np.ndarray, N: int) -> float:
+                """
+                w_local: Vecteur des poids (un ndarray de taille D)
+                b_local: Le biais
+                X: Points de données (un ndarray de taille (N,D))
+                Y: Valeur de vérité des points (un ndarray de taille N)
+                N: Nombre de données
+                Return: La valeur de la loss
+                """
+                # E = somme de la loss sur tous les points
+                losses = [floss(Xi=X[i], Yi=Y[i], w=w_local, bias=b_local) for i in range(N)]
+                return np.sum(losses)/N
+
+            # Énergie du point initial
+            E_old = energy(w0, bias, X, Y, N)
+            vec_E.append(E_old)
+            vec_score.append(score(X, Y, w0, bias))
+
+            somme = 0
+
+            for _ in range(maxiter):
+                # Proposer un nouveau w et b en tirant D gaussiennes indépendantes
+                w_new = w0 + np.random.normal(0, sigma_w/D**0.5, size=D)
+                b_new = bias + np.random.normal(0, sigma_b)
+                E_new = energy(w_new, b_new, X, Y, N)
+                delta_E = E_new - E_old
+
+                # Probabilité d'acceptation du déplacement
+                acceptance = min(np.exp(-delta_E / T), 1)
+                if np.random.rand() <= acceptance:
+                    w0, bias = w_new, b_new
+                    E_old = E_new
+                    somme += 1
+                vec_E.append(E_old)
+                vec_score.append(score(X, Y, w0, bias))            
+
+            return w0, bias
     else:
         raise ValueError(f"Il n'existe pas de méthode appelée {method}.")
     return w, b, floss, fgradient, fmethod
@@ -322,7 +385,7 @@ def imbalance(X:np.ndarray, Y:np.ndarray, rate:float=None) -> Tuple[np.ndarray, 
 
 
 # Apprentissage du student
-def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=100, 
+def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=100,
                   ) -> Tuple[np.ndarray, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
@@ -377,8 +440,11 @@ def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, 
     kF = sklearn.model_selection.StratifiedShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=424242)
     scores_train = []
     scores_test = []
+    i = 0
+    start = time()
 
     for train_index, test_index in kF.split(X, Y):
+        i += 1
         w0 = w_init.copy()
         b0 = b_init
         X_train, X_test = X[train_index], X[test_index]
@@ -395,6 +461,7 @@ def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, 
         # Évaluer le modèle sur le pli
         scores_train.append(score(X_train, Y_train, w_student, b_student))
         scores_test.append(score(X_test, Y_test, w_student, b_student))
+        print(f"Cross-validation réalisée à {(((i)/n_splits)*100):.2f}% après {(time()-start):.0f} secondes")
     return scores_train, scores_test
 
 

@@ -145,13 +145,17 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
     test = []
     ptrain = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
     p0 = intraseque(Y=Y)
+    start = time()
 
     # Cross-validation
-    for p in ptrain:
+    for i, p in enumerate(ptrain):
       res = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, maxiter=maxiter, 
                            test_size=test_size, n_splits=n_splits, ptrain=p, ptest=None)
       train.append(res[0])
       test.append(res[1])
+      print("----------------------------------------------")
+      print(f"Exécution terminée à {(((i)/42)*100):.2f}% après {(time()-start):.0f} secondes")
+      print("----------------------------------------------")
 
     # Affiche les résultats
     show_perf_per_ptrain(train=train, test=test, ptrain=ptrain, p0=p0, 
@@ -178,13 +182,17 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
     test = []
     ptest = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
     p0 = intraseque(Y=Y)
+    start = time()
 
     # Cross-validation
-    for p in ptest:
+    for i, p in enumerate(ptest):
       res = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, maxiter=maxiter, 
                            test_size=test_size, n_splits=n_splits, ptrain=None, ptest=p)
       train.append(res[0])
       test.append(res[1])
+      print("----------------------------------------------")
+      print(f"Exécution terminée à {(((i)/42)*100):.2f}% après {(time()-start):.0f} secondes")
+      print("----------------------------------------------")
 
     # Affiche les résultats
     show_perf_per_ptest(train=train, test=test, ptest=ptest, p0=p0, 
@@ -192,12 +200,12 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
 
 
 # Exemple d'utilisation
-N = 1000
-D = 100
-bias = -1.5
+N = 5000
+D = 500
+bias = -1.0
 noise_std = 1.0
 # save_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
 # delete_data(N=N, D=D, bias=bias, all=True)
-exec(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
+exec(X=X, Y=Y, loss='hinge', method='langevin', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
 # exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest

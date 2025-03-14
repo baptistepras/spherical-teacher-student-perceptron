@@ -27,7 +27,7 @@ Fonctions :
    - Charge et retourne un jeu de données sauvegardé depuis le dossier "data" sous la forme d'un tuple (X, Y, w, b).
      Si aucun dataset avec ces paramètres n'existe, le créé.
 
-3. delete_data(N:int=500, D:int=50, bias:float=-1, all:bool=False) -> None
+3. delete_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1, all:bool=False) -> None
   - Supprime le fichier ciblé, si all=True, tous les fichiers .npz dans data seront supprimés.
 
 4. exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
@@ -59,7 +59,7 @@ def save_data(N:int=500, D:int=50, bias:float=-1.0, noise_std:float=1.0) -> None
     base_dir = os.path.dirname(os.path.abspath(__file__))
     folder = os.path.join(base_dir, "data")
     os.makedirs(folder, exist_ok=True)
-    filename = os.path.join(folder, f"N{N}_D{D}_b{bias:.1f}.npz")
+    filename = os.path.join(folder, f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.npz")
 
     # Sauvegarde du jeu de données avec son teacher
     np.savez(filename, X=X, Y=Y_base, w=w_base, b=b_base)
@@ -78,7 +78,7 @@ def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple
     Return: Les données sauvegardés (X, Y, w, b).
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(base_dir, "data", f"N{N}_D{D}_b{bias:.1f}.npz")
+    file_path = os.path.join(base_dir, "data", f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.npz")
     if not os.path.exists(file_path):
         save_data(N=N, D=D, bias=bias, noise_std=noise_std)
     loaded = np.load(file_path)
@@ -89,11 +89,12 @@ def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple
 
 
 # Efface un jeu de données (chatGPT)
-def delete_data(N:int=500, D:int=50, bias:float=-1, all:bool=False) -> None:
+def delete_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0, all:bool=False) -> None:
     """
     N: Nombre de points de données du dataset à fetch
     D: Dimension des données du dataset à fetch
-    bias : Biais du teacher à fetch
+    bias: Biais du teacher à fetch
+    noise_std: Le bruit ajouté au teacher
     all: Si True, supprime tous les datasets (le randomstate initialisé dans le fichier permet de les retrouver)
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -116,7 +117,7 @@ def delete_data(N:int=500, D:int=50, bias:float=-1, all:bool=False) -> None:
 
     # Supprime le fichier cible
     else:
-        file_path = os.path.join(folder, f"N{N}_D{D}_b{bias:.1f}.npz")
+        file_path = os.path.join(folder, f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.npz")
         if os.path.exists(file_path):
             os.remove(file_path)
             print(f"Le fichier '{file_path}' a été supprimé.")
@@ -154,7 +155,7 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
       train.append(res[0])
       test.append(res[1])
       print("----------------------------------------------")
-      print(f"Exécution terminée à {(((i)/42)*100):.2f}% après {(time()-start):.0f} secondes")
+      print(f"Exécution terminée à {(((i+1)/42)*100):.2f}% après {(time()-start):.0f} secondes")
       print("----------------------------------------------")
 
     # Affiche les résultats
@@ -191,7 +192,7 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
       train.append(res[0])
       test.append(res[1])
       print("----------------------------------------------")
-      print(f"Exécution terminée à {(((i)/42)*100):.2f}% après {(time()-start):.0f} secondes")
+      print(f"Exécution terminée à {(((i+1)/42)*100):.2f}% après {(time()-start):.0f} secondes")
       print("----------------------------------------------")
 
     # Affiche les résultats
@@ -206,6 +207,6 @@ bias = -1.0
 noise_std = 1.0
 # save_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
-# delete_data(N=N, D=D, bias=bias, all=True)
-exec(X=X, Y=Y, loss='hinge', method='langevin', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
+# delete_data(N=N, D=D, bias=bias, noise_std=noise_std, all=True)
+exec(X=X, Y=Y, loss='perceptron', method='langevin', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
 # exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest

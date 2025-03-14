@@ -181,7 +181,8 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
     """
     _, D = X.shape
     w = np.random.normal(loc=0, scale=1/D**0.5, size=D)
-    b = np.random.uniform(X.min(), X.max())
+    # b = np.random.uniform(X.min(), X.max())
+    b = 0  # Pour éviter d'être loin du nuage de points
 
     # Définition de la fonction de loss (renvoie la valeur de la loss pour un point X donné)
     if loss=='perceptron':
@@ -592,7 +593,7 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
         base_dir = os.path.dirname(os.path.abspath(__file__))
         folder = os.path.join(base_dir, "plots")
         os.makedirs(folder, exist_ok=True)
-        filename = os.path.join(folder, f"TRAIN_N{N}_D{D}_b{bias:.1f}_{loss}_{method}.jpg")
+        filename = os.path.join(folder, f"TRAIN_N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}_{loss}_{method}.jpg")
         fig.savefig(filename, bbox_inches='tight', dpi=300)
         print(f"Affichage sauvegardé sous: {filename}")
     plt.show()
@@ -654,7 +655,7 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
         base_dir = os.path.dirname(os.path.abspath(__file__))
         folder = os.path.join(base_dir, "plots")
         os.makedirs(folder, exist_ok=True)
-        filename = os.path.join(folder, f"TEST_N{N}_D{D}_b{bias:.1f}_{loss}_{method}.jpg")
+        filename = os.path.join(folder, f"TEST_N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}_{loss}_{method}.jpg")
         fig.savefig(filename, bbox_inches='tight', dpi=300)
         print(f"Affichage sauvegardé sous: {filename}")
     plt.show()

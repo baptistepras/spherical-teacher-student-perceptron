@@ -181,8 +181,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
     """
     _, D = X.shape
     w = np.random.normal(loc=0, scale=1/D**0.5, size=D)
-    # b = np.random.uniform(X.min(), X.max())
-    b = 0  # Pour éviter d'être loin du nuage de points
+    b = np.random.uniform(X.min(), X.max())
 
     # Définition de la fonction de loss (renvoie la valeur de la loss pour un point X donné)
     if loss=='perceptron':

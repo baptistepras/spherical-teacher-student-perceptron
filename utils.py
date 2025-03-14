@@ -288,7 +288,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
             N, D = X.shape
-            T = 0.01  # Température à régler
+            T = 0.01  # Température à régler plus bas dans la boucle for
             maxiter = 7000  # Maxiter à régler
             w0 = w.copy()
             amplitude = X.max() - X.min()
@@ -318,7 +318,13 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
 
             somme = 0
 
-            for _ in range(maxiter):
+            for i in range(maxiter):
+                # On choisit un T plus grand au début pour rapidement se rapprocher d'une solution
+                if i < 1000:
+                    T = 0.1  # Température à régler
+                else:
+                    T = 0.01  # Température à régler
+
                 # Proposer un nouveau w et b en tirant D gaussiennes indépendantes
                 w_new = w0 + np.random.normal(0, sigma_w/D**0.5, size=D)
                 b_new = bias + np.random.normal(0, sigma_b)
@@ -573,9 +579,14 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
     # Légende hyper-paramètres
     if save is not None:
         N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method = save
-        textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
-                   f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
-                   f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
+        if method == 'gradient':
+            textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
+                       f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
+                       f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
+        else:
+            textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
+                       f"T={0.01}\nMax Iter={7000}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
+                       f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(1.05, 0.5, textstr, transform=ax.transAxes, fontsize=12, verticalalignment='center', bbox=props)
 

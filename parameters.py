@@ -60,7 +60,7 @@ def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple
     Return: Les données sauvegardés (X, Y, w, b).
     """
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    file_path = os.path.join(base_dir, "data", f"N{N}_D{D}_b{bias:.1f}.npz")
+    file_path = os.path.join(base_dir, "data", f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.npz")
     if not os.path.exists(file_path):
         raise ValueError("Ce dataset n'existe pas")
     loaded = np.load(file_path)
@@ -218,7 +218,13 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
 
             somme = 0
 
-            for _ in range(maxiter):
+            for i in range(maxiter):
+                # On choisit un T plus grand au début pour rapidement se rapprocher d'une solution
+                if i < 1000:
+                    T = 0.1
+                else:
+                    T = 0.01
+                
                 # Proposer un nouveau w et b en tirant D gaussiennes indépendantes
                 w_new = w0 + np.random.normal(0, sigma_w/D**0.5, size=D)
                 b_new = bias + np.random.normal(0, sigma_b)
@@ -237,7 +243,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 vec_score.append(score(X, Y, w0, bias))
 
             # Afficher l'évolution à travers le temps
-            
+            """
             _, ax = plt.subplots(figsize=(10, 8))
             ax.plot(np.linspace(0, maxiter, maxiter+1), vec_score, '-', color='red', label='Score Evolution')
             ax.set_xlabel("Iteration")
@@ -245,7 +251,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             ax.set_title("Evolution of Score over time")
             ax.legend()
             plt.show()
-            
+            """
             
             return w0, bias, vec_score, somme/maxiter*100
     else:
@@ -399,10 +405,12 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     Ytrain: train set labels
     Ytest: test set labels
     """
-    runs = 5  # Modifier si besoin
-    n = 5  # Modifier si besoin
-    t_values = np.linspace(0.001, 1.0, n)  # Modifier si besoin
-    _, ax = plt.subplots(figsize=(10, 6))
+    runs = 10  # Modifier si besoin
+    # n = 5  # Modifier si besoin
+    # t_values = np.linspace(0.001, 0.01, n)  # Modifier si besoin
+    t_values = np.r_[np.linspace(0.001, 0.01, 10), np.linspace(0.02, 0.1, 9)]  # Modifier si besoin
+    n = len(t_values)
+    fig, ax = plt.subplots(figsize=(10, 6))
     start = time()
 
     all_train_scores = np.zeros((runs, n))
@@ -456,6 +464,14 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     ax.set_title(f"Train and Test Scores over different values of T\n(Mean ± Std over {runs} runs)")
     ax.legend()
     ax.grid(True, linestyle="--", alpha=0.5)
+
+    # Sauvegarde des données
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    folder = os.path.join(base_dir, "plots_optimization")
+    os.makedirs(folder, exist_ok=True)
+    filename = os.path.join(folder, f"T_optimization.jpg")
+    fig.savefig(filename, bbox_inches='tight', dpi=300)
+    print(f"Affichage sauvegardé sous: {filename}")
     
     plt.show()
 
@@ -471,7 +487,7 @@ def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray,
     """
     runs = 5  # Modifier si besoin
     iter = 10000  # Modifier si besoin
-    _, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(10, 6))
     cmap = plt.get_cmap("tab10")
     start = time()
 
@@ -491,6 +507,15 @@ def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray,
     ax.set_title(f"Train Scores over different values of maxiter")
     ax.legend()
     ax.grid(True, linestyle="--", alpha=0.5)
+
+    # Sauvegarde des données
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    folder = os.path.join(base_dir, "plots_optimization")
+    os.makedirs(folder, exist_ok=True)
+    filename = os.path.join(folder, f"maxiter_optimization.jpg")
+    fig.savefig(filename, bbox_inches='tight', dpi=300)
+    print(f"Affichage sauvegardé sous: {filename}")
+
     plt.show()
         
 
@@ -500,9 +525,9 @@ bias = -1.0
 noise_std = 1.0
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)
 Xtrain, Xtest, Ytrain, Ytest = split(X, Y, 0.2)
-w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='langevin')
-w_student, b_student, _, _ = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
-                                                                  fmethod=fmethod, eta=0.1, maxiter=maxiter, t=T)
+# w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='langevin')
+# w_student, b_student, _, _ = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
+#                                                                  fmethod=fmethod, eta=0.1, maxiter=maxiter, t=T)
 # show_different_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
 # find_best_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
 # find_best_T_multiple_runs(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)

@@ -410,7 +410,7 @@ def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Ca
     return w_final, b_final
 
 
-# Evalue la performance du student
+# Evalue la performance du student avec la balanced accuracy
 def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float:
     """
     X: Points de données (un ndarray de taille (N, D))
@@ -420,7 +420,7 @@ def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float:
     Return: L'accuracy du modèle sur le dataset
     """
     Ypred = np.sign(X @ w + b)
-    accuracy = np.mean(Ypred == Y)
+    accuracy = sklearn.metrics.balanced_accuracy_score(Y, Ypred)
     return accuracy
 
 

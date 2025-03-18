@@ -406,10 +406,10 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     Ytest: test set labels
     """
     runs = 10  # Modifier si besoin
-    # n = 5  # Modifier si besoin
-    # t_values = np.linspace(0.001, 0.01, n)  # Modifier si besoin
-    t_values = np.r_[np.linspace(0.001, 0.01, 10), np.linspace(0.02, 0.1, 9)]  # Modifier si besoin
-    n = len(t_values)
+    n = 13  # Modifier si besoin
+    t_values = np.linspace(0.08, 0.2, n)  # Modifier si besoin
+    # t_values = np.r_[np.linspace(0.001, 0.01, 10), np.linspace(0.02, 0.1, 9)]  # Modifier si besoin
+    # n = len(t_values)
     fig, ax = plt.subplots(figsize=(10, 6))
     start = time()
 

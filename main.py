@@ -145,6 +145,7 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
     train = []
     test = []
     ptrain = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
+    # ptrain = np.linspace(0, 1, 21)[1:-1]  # 19 valeurs entre 0 et 1 (exclus)
     p0 = intraseque(Y=Y)
     start = time()
 
@@ -182,6 +183,7 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
     train = []
     test = []
     ptest = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
+    # ptest = np.linspace(0, 1, 21)[1:-1]  # 19 valeurs entre 0 et 1 (exclus)
     p0 = intraseque(Y=Y)
     start = time()
 

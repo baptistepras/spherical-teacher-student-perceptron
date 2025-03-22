@@ -38,8 +38,9 @@ Fonctions :
          test_size:float=0.2, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1, noise_std:float=1.0) -> None
     - Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné.
 """
-
+from joblib import Parallel, delayed, cpu_count
 from utils import *
+paralel = True
 
 
 # Sauvegarde un data set dans le dossier data (chatGPT)
@@ -140,6 +141,7 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
     bias: Le biais du Teacher
     noise_std: Le bruit appliqué
     """
+
     N, D = X.shape
     w_init, b_init, floss, fgradient, fmethod = student(X=X, loss=loss, method=method)
     train = []
@@ -150,16 +152,35 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
     start = time()
 
     # Cross-validation
-    for i, p in enumerate(ptrain):
-      res = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, maxiter=maxiter, 
+    if paralel: 
+      # Fonction qui exécute la cross-validation pour une valeur donnée de ptrain
+      def run_cv_for_p(p):
+        return p, cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient,
+                                 fmethod=fmethod, eta=eta, maxiter=maxiter, test_size=test_size, 
+                                 n_splits=n_splits,ptrain=p, ptest=None)
+
+      # Parallélisation avec joblib, en utilisant autant de jobs que de cœurs
+      results = Parallel(n_jobs=cpu_count(), timeout=36000, backend="threading")(delayed(run_cv_for_p)(p) for p in ptrain)
+
+      # Tri des résultats par valeur de ptrain
+      results.sort(key=lambda tup: tup[0])
+
+      # Extraction des résultats dans l'ordre de ptrain
+      train = [res[1][0] for res in results]
+      test = [res[1][1] for res in results]
+
+    else:
+      for i, p in enumerate(ptrain):
+        res = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, maxiter=maxiter, 
                            test_size=test_size, n_splits=n_splits, ptrain=p, ptest=None)
-      train.append(res[0])
-      test.append(res[1])
-      print("----------------------------------------------")
-      print(f"Exécution terminée à {(((i+1)/42)*100):.2f}% après {(time()-start):.0f} secondes")
-      print("----------------------------------------------")
+        train.append(res[0])
+        test.append(res[1])
+        print("----------------------------------------------")
+        print(f"Exécution terminée à {(((i+1)/42)*100):.2f}% après {(time()-start):.0f} secondes")
+        print("----------------------------------------------")
 
     # Affiche les résultats
+    print(f"Temps final: {(time()-start):.0f} secondes")
     show_perf_per_ptrain(train=train, test=test, ptrain=ptrain, p0=p0, 
                          save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
     
@@ -188,27 +209,47 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
     start = time()
 
     # Cross-validation
-    for i, p in enumerate(ptest):
-      res = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, maxiter=maxiter, 
+        # Cross-validation
+    if paralel: 
+      # Fonction qui exécute la cross-validation pour une valeur donnée de ptrain
+      def run_cv_for_p(p):
+        return p, cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient,
+                                 fmethod=fmethod, eta=eta, maxiter=maxiter, test_size=test_size, 
+                                 n_splits=n_splits,ptrain=None, ptest=p)
+
+      # Parallélisation avec joblib, en utilisant autant de jobs que de cœurs
+      results = Parallel(n_jobs=cpu_count(), timeout=36000, backend="threading")(delayed(run_cv_for_p)(p) for p in ptest)
+
+      # Tri des résultats par valeur de ptrain
+      results.sort(key=lambda tup: tup[0])
+
+      # Extraction des résultats dans l'ordre de ptrain
+      train = [res[1][0] for res in results]
+      test = [res[1][1] for res in results]
+
+    else:
+      for i, p in enumerate(ptest):
+        res = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, maxiter=maxiter, 
                            test_size=test_size, n_splits=n_splits, ptrain=None, ptest=p)
-      train.append(res[0])
-      test.append(res[1])
-      print("----------------------------------------------")
-      print(f"Exécution terminée à {(((i+1)/42)*100):.2f}% après {(time()-start):.0f} secondes")
-      print("----------------------------------------------")
+        train.append(res[0])
+        test.append(res[1])
+        print("----------------------------------------------")
+        print(f"Exécution terminée à {(((i+1)/42)*100):.2f}% après {(time()-start):.0f} secondes")
+        print("----------------------------------------------")
 
     # Affiche les résultats
+    print(f"Temps final: {(time()-start):.0f} secondes")
     show_perf_per_ptest(train=train, test=test, ptest=ptest, p0=p0, 
                          save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
 
 
 # Exemple d'utilisation
-N = 5000
-D = 500
+N = 100
+D = 10
 bias = -1.0
 noise_std = 1.0
 # save_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
 # delete_data(N=N, D=D, bias=bias, noise_std=noise_std, all=True)
-exec(X=X, Y=Y, loss='hinge', method='langevin', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
+exec(X=X, Y=Y, loss='square', method='langevin', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
 # exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest

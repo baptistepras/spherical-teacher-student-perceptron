@@ -40,7 +40,7 @@ Fonctions :
 """
 from joblib import Parallel, delayed, cpu_count
 from utils import *
-paralel = True
+paralel = True  # Set to True to use as many threads as possible to simultaneously execute several ptrain values
 
 
 # Sauvegarde un data set dans le dossier data (chatGPT)

@@ -26,6 +26,8 @@ In main.py, you can adjust the following hyperparameters when calling the `exec(
 - loss: The loss to use (`hinge`, `perceptron` or `square`. `square` isn't usable on the gradient method)
 - method: The method to use to train the student (`gradient` or `langevin`)
 
+If the parameter `paralel` at the beginning of the file is set to `True`, the exec() functions will do simultaneously as much as possible `ptrain` values, depending on the number of threads available on your device. If it is set to `False`, it will make values one by one (can be longer for big dataset).
+
 For the `langevin` method, the parameters `T` and `maxiter` can be changed directly in the sub-function `fmethod` in the `langevin-if branch`, in the function `student`, situated in `utils.py` (`T=0.01` and `maxiter=7000` seem to be fit for the kind of data treated here). The parameters passed in the function `apprentissage` will not impact the hyper-parameters of this method.
 
 Here is an example of every function in the main:  

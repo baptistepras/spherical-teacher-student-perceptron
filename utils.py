@@ -264,7 +264,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             norm = 1.0/np.sqrt(D)
             w0 = w.copy()
             for _ in range(maxiter):
-                predictions = X @ w0 + b
+                predictions = X @ w0 + bias
                 losses = floss(Y, predictions)
                 misclassified = (losses > 0)
                 if not misclassified.any():

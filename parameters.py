@@ -80,64 +80,62 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
              et la méthode pour entraîner le student
     """
     _, D = X.shape
-    w = np.random.normal(loc=0, scale=1/D**0.5, size=D)
+    w = np.random.normal(loc=0, scale=1/np.sqrt(D), size=D)
     b = np.random.uniform(X.min(), X.max())
 
     # Définition de la fonction de loss (renvoie la valeur de la loss pour un point X donné)
     if loss=='perceptron':
-        def floss(Xi:np.ndarray, Yi:float, w:np.ndarray, bias:float) -> float:
+        def floss(Y: np.ndarray, pred: np.ndarray) -> np.ndarray:
             """
-            Xi: Point de donnée (un ndarray de taille D)
-            Yi: Valeur de vérité du point
-            w: Vecteur des poids (un ndarray de taille D)
-            bias: Le biais du perceptron
-            Return: La valeur de la loss (0 pour un point bien classé, val > 0 pour un point mal classé)
+            Y: Valeur de vérité du point
+            pred: Prédictions faites par le modèle
+            Return: La loss pour chaque point (0 pour un point bien classé, val > 0 pour un point mal classé)
             """
-            return max(0, -(Yi * (Xi @ w + bias)))
-        def fgradient(X:np.ndarray, Y:np.ndarray, misclassified:np.ndarray, eta:float=0.1) -> Tuple[np.ndarray, float]:
+            return np.maximum(0, -(Y * pred))
+        def fgradient(X:np.ndarray, Y:np.ndarray, misclassified:np.ndarray, eta:float=0.1, 
+                      norm:float=1/np.sqrt(D)) -> Tuple[np.ndarray, float]:
             """
             X: Points de données (un ndarray de taille (N, D))
             Y: Valeur de vérité des points de données (un ndarray de taille N)
             misclassified: Liste des points mal classés
             eta: Taux d'apprentissage
+            norm: Valeur de 1/np.sqrt(D)
             Return: Le w et le b pour la mise à jour
             """
             _, D = X.shape
-            w = (eta * (1.0/D**0.5)) * X[misclassified].T @ Y[misclassified]
-            b = eta * (1.0/D**0.5) * np.sum(Y[misclassified])
+            w = (eta * norm) * X[misclassified].T @ Y[misclassified]
+            b = eta * norm * np.sum(Y[misclassified])
             return w, b
     elif loss=='hinge':
-        def floss(Xi:np.ndarray, Yi:float, w:np.ndarray, bias:float) -> float:
+        def floss(Y: np.ndarray, pred: np.ndarray) -> np.ndarray:
             """
-            Xi: Point de donnée (un ndarray de taille D)
-            Yi: Valeur de vérité du point
-            w: Vecteur des poids (un ndarray de taille D)
-            bias: Le biais du perceptron
-            Return: La valeur de la loss (0 pour un point bien classé, val > 0 pour un point mal classé ou proche de la frontière)
+            Y: Valeur de vérité du point
+            pred: Prédictions faites par le modèle
+            Return: La loss pour chaque point (0 pour un point bien classé, val > 0 pour un point mal classé ou proche de la frontière)
             """
-            return max(0, 1 - (Yi * (Xi @ w + bias)))
-        def fgradient(X:np.ndarray, Y:np.ndarray, misclassified:np.ndarray, eta:float=0.1) -> Tuple[np.ndarray, float]:
+            return np.maximum(0, 1 - (Y * pred))
+        def fgradient(X:np.ndarray, Y:np.ndarray, misclassified:np.ndarray, eta:float=0.1,
+                      norm:float=1/np.sqrt(D)) -> Tuple[np.ndarray, float]:
             """
             X: Points de données (un ndarray de taille (N, D))
             Y: Valeur de vérité des points de données (un ndarray de taille N)
             misclassified: Liste des points mal classés
             eta: Taux d'apprentissage
+            norm: Valeur de 1/np.sqrt(D)
             Return: Le w et le b pour la mise à jour
             """
             _, D = X.shape
-            w = (eta * (1.0/D**0.5)) * X[misclassified].T @ Y[misclassified]
-            b = eta * (1.0/D**0.5) * np.sum(Y[misclassified])
+            w = (eta * norm) * X[misclassified].T @ Y[misclassified]
+            b = eta * norm * np.sum(Y[misclassified])
             return w, b
     elif loss=='square':
-        def floss(Xi:np.ndarray, Yi:float, w:np.ndarray, bias:float) -> float:
+        def floss(Y: np.ndarray, pred: np.ndarray) -> np.ndarray:
             """
-            Xi: Point de donnée (un ndarray de taille D)
-            Yi: Valeur de vérité du point
-            w: Vecteur des poids (un ndarray de taille D)
-            bias: Le biais du perceptron
-            Return: La valeur de la loss (0 pour un point bien classé, 2 pour un point mal classé)
+            Y: Valeur de vérité du point
+            pred: Prédictions faites par le modèle
+            Return: La loss pour chaque point (0 pour un point bien classé, 2 pour un point mal classé)
             """
-            return 0.5 * (np.sign((Xi @ w + bias)) - Yi)**2
+            return 0.5 * np.square((np.sign(pred) - Y))
         def fgradient(X:np.ndarray, Y:np.ndarray, misclassified:np.ndarray, eta:float=0.1) -> None:
             """
             Pas entraînable par descente de gradient
@@ -161,15 +159,16 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             maxiter: Le nombre d'itérations à faire
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
+            _, D = X.shape
+            norm = 1.0/np.sqrt(D)
             w0 = w.copy()
-            N, _ = X.shape
             for _ in range(maxiter):
-                losses = [floss(Xi=X[n], Yi=Y[n], w=w0, bias=bias) for n in range(N)]
-                losses = np.array(losses)
+                predictions = X @ w0 + bias
+                losses = floss(Y, predictions)
                 misclassified = (losses > 0)
                 if not misclassified.any():
                     break
-                w_temp, b_temp = fgradient(X=X, Y=Y, misclassified=misclassified, eta=eta)
+                w_temp, b_temp = fgradient(X=X, Y=Y, misclassified=misclassified, eta=eta, norm=norm)
                 w0 += w_temp
                 bias += b_temp
             return w0, bias
@@ -188,8 +187,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
             N, D = X.shape
-            T = t  # Température à régler
-            maxiter *= 1  # maxiter à régler
+            maxiter = maxiter  # maxiter à régler
             w0 = w.copy()
             amplitude = X.max() - X.min()
             sigma_w = amplitude / 10.0  # On garde 1/10 de l'amplitude des données
@@ -208,8 +206,9 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 Return: La valeur de la loss
                 """
                 # E = somme de la loss sur tous les points
-                losses = [floss(Xi=X[i], Yi=Y[i], w=w_local, bias=b_local) for i in range(N)]
-                return np.sum(losses)/N
+                predictions = X @ w_local + b_local
+                losses = floss(Y, predictions)
+                return losses.mean()
 
             # Énergie du point initial
             E_old = energy(w0, bias, X, Y, N)
@@ -221,9 +220,9 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             for i in range(maxiter):
                 # On choisit un T plus grand au début pour rapidement se rapprocher d'une solution
                 if i < 1000:
-                    T = 0.1
+                    T = t*10
                 else:
-                    T = 0.01
+                    T = t
                 
                 # Proposer un nouveau w et b en tirant D gaussiennes indépendantes
                 w_new = w0 + np.random.normal(0, sigma_w/D**0.5, size=D)
@@ -303,7 +302,7 @@ def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float:
     Return: L'accuracy du modèle sur le dataset
     """
     Ypred = np.sign(X @ w + b)
-    accuracy = np.mean(Ypred == Y)
+    accuracy = sklearn.metrics.balanced_accuracy_score(Y, Ypred)
     return accuracy
 
 
@@ -348,10 +347,10 @@ def find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest
     Ytrain: train set labels
     Ytest: test set labels
     """
-    n = 100  # Modifier si besoin
-    t_values = np.linspace(0.01, 0.1, n)  # Modifier si besoin
+    n = 10  # Modifier si besoin
+    t_values = np.linspace(0.005, 0.05, n)   # Modifier si besoin
     _, ax = plt.subplots(figsize=(10, 6))
-    w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='langevin')
+    w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='square', method='langevin')
     train_scores = []
     test_scores = []
     acceptances = []
@@ -405,10 +404,10 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     Ytrain: train set labels
     Ytest: test set labels
     """
-    runs = 10  # Modifier si besoin
-    n = 13  # Modifier si besoin
-    t_values = np.linspace(0.08, 0.2, n)  # Modifier si besoin
-    # t_values = np.r_[np.linspace(0.001, 0.01, 10), np.linspace(0.02, 0.1, 9)]  # Modifier si besoin
+    runs = 5 # Modifier si besoin
+    n = 10  # Modifier si besoin
+    t_values = np.linspace(0.001, 0.01, n)  # Modifier si besoin
+    # t_values = np.r_[np.linspace(0.005, 0.01, 5), np.linspace(0.02, 0.05, 4)]  # Modifier si besoin
     # n = len(t_values)
     fig, ax = plt.subplots(figsize=(10, 6))
     start = time()
@@ -522,7 +521,7 @@ def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray,
 N = 5000
 D = 500
 bias = -1.0
-noise_std = 1.0
+noise_std = 0.0
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)
 Xtrain, Xtest, Ytrain, Ytest = split(X, Y, 0.2)
 # w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='langevin')
@@ -531,4 +530,4 @@ Xtrain, Xtest, Ytrain, Ytest = split(X, Y, 0.2)
 # show_different_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
 # find_best_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
 # find_best_T_multiple_runs(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
-# find_best_maxiter(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
+find_best_maxiter(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)

@@ -288,8 +288,8 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
             N, D = X.shape
-            T = 0.01  # Température à régler plus bas dans la boucle for
-            maxiter = 7000  # Maxiter à régler
+            temp = 0.003  # Température à régler
+            maxiter = 15000  # Maxiter à régler
             w0 = w.copy()
             amplitude = X.max() - X.min()
             sigma_w = amplitude / 10.0  # On garde 1/10 de l'amplitude des données
@@ -317,15 +317,14 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             E_old = energy(w0, bias, X, Y, N)
             # vec_E.append(E_old)
             vec_score.append(score(X, Y, w0, bias))
-
-            somme = 0
+            max10 = maxiter/10
 
             for i in range(maxiter):
                 # On choisit un T plus grand au début pour rapidement se rapprocher d'une solution
-                if i < 1000:
-                    T = 0.1  # Température à régler
+                if i < max10:
+                    T = temp*10
                 else:
-                    T = 0.01  # Température à régler
+                    T = temp
 
                 # Proposer un nouveau w et b en tirant D gaussiennes indépendantes
                 w_new = w0 + np.random.normal(0, sigma_w/np.sqrt(D), size=D)
@@ -338,7 +337,6 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 if np.random.rand() <= acceptance:
                     w0, bias = w_new, b_new
                     E_old = E_new
-                    somme += 1
                 # vec_E.append(E_old)
                 vec_score.append(score(X, Y, w0, bias))            
 

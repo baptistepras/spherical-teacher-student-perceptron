@@ -45,8 +45,8 @@ import numpy as np
 import os
 from typing import Tuple, Callable, List
 from time import time
-maxiter = 7000
-T = 0.01
+maxiter = 15000
+T = 0.003
 
 
 # Récupère le jeu de données voulu (chatGPT)
@@ -215,11 +215,12 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             vec_E.append(E_old)
             vec_score.append(score(X, Y, w0, bias))
 
+            max10 = maxiter/20
             somme = 0
 
             for i in range(maxiter):
                 # On choisit un T plus grand au début pour rapidement se rapprocher d'une solution
-                if i < 1000:
+                if i < max10:
                     T = t*10
                 else:
                     T = t
@@ -404,11 +405,11 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     Ytrain: train set labels
     Ytest: test set labels
     """
-    runs = 5 # Modifier si besoin
+    runs = 10 # Modifier si besoin
     n = 10  # Modifier si besoin
     t_values = np.linspace(0.001, 0.01, n)  # Modifier si besoin
     # t_values = np.r_[np.linspace(0.005, 0.01, 5), np.linspace(0.02, 0.05, 4)]  # Modifier si besoin
-    # n = len(t_values)
+    n = len(t_values)
     fig, ax = plt.subplots(figsize=(10, 6))
     start = time()
 
@@ -485,7 +486,7 @@ def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray,
     Ytest: test set labels
     """
     runs = 5  # Modifier si besoin
-    iter = 10000  # Modifier si besoin
+    iter = 20000  # Modifier si besoin
     fig, ax = plt.subplots(figsize=(10, 6))
     cmap = plt.get_cmap("tab10")
     start = time()

@@ -40,7 +40,7 @@ Fonctions :
 """
 from joblib import Parallel, delayed, cpu_count
 from utils import *
-paralel = True  # Set to True to use as many threads as possible to simultaneously execute several ptrain values
+paralel = False  # Set to True to use as many threads as possible to simultaneously execute several ptrain values
 
 
 # Sauvegarde un data set dans le dossier data (chatGPT)
@@ -146,6 +146,8 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
     w_init, b_init, floss, fgradient, fmethod = student(X=X, loss=loss, method=method)
     train = []
     test = []
+    roctr = []
+    rocte = []
     ptrain = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
     # ptrain = np.linspace(0, 1, 21)[1:-1]  # 19 valeurs entre 0 et 1 (exclus)
     p0 = intraseque(Y=Y)
@@ -168,6 +170,8 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
       # Extraction des résultats dans l'ordre de ptrain
       train = [res[1][0] for res in results]
       test = [res[1][1] for res in results]
+      roctr = [res[1][2] for res in results]
+      rocte = [res[1][3] for res in results]
 
     else:
       for i, p in enumerate(ptrain):
@@ -175,13 +179,15 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
                            test_size=test_size, n_splits=n_splits, ptrain=p, ptest=None)
         train.append(res[0])
         test.append(res[1])
+        roctr.append(res[2])
+        rocte.append(res[3])
         print("----------------------------------------------")
         print(f"Exécution terminée à {(((i+1)/42)*100):.2f}% après {(time()-start):.0f} secondes")
         print("----------------------------------------------")
 
     # Affiche les résultats
     print(f"Temps final: {(time()-start):.0f} secondes")
-    show_perf_per_ptrain(train=train, test=test, ptrain=ptrain, p0=p0, 
+    show_perf_per_ptrain(train=train, test=test, ptrain=ptrain, p0=p0, roctr=roctr, rocte=rocte,
                          save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
     
 # Effectue une cross-validation sur tous les ptest possibles pour un dataset donné
@@ -226,6 +232,8 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
       # Extraction des résultats dans l'ordre de ptrain
       train = [res[1][0] for res in results]
       test = [res[1][1] for res in results]
+      roctr = [res[1][2] for res in results]
+      rocte = [res[1][3] for res in results]
 
     else:
       for i, p in enumerate(ptest):
@@ -233,13 +241,15 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
                            test_size=test_size, n_splits=n_splits, ptrain=None, ptest=p)
         train.append(res[0])
         test.append(res[1])
+        roctr.append(res[2])
+        rocte.append(res[3])
         print("----------------------------------------------")
         print(f"Exécution terminée à {(((i+1)/42)*100):.2f}% après {(time()-start):.0f} secondes")
         print("----------------------------------------------")
 
     # Affiche les résultats
     print(f"Temps final: {(time()-start):.0f} secondes")
-    show_perf_per_ptest(train=train, test=test, ptest=ptest, p0=p0, 
+    show_perf_per_ptest(train=train, test=test, ptest=ptest, p0=p0, roctr=roctr, rocte=rocte,
                          save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
 
 
@@ -251,5 +261,5 @@ noise_std = 0.0
 # save_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
 # delete_data(N=N, D=D, bias=bias, noise_std=noise_std, all=True)
-exec(X=X, Y=Y, loss='square', method='langevin', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
-# exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=100, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest
+exec(X=X, Y=Y, loss='hinge', method='langevin', test_size=0.2, eta=0.1, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
+# exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest

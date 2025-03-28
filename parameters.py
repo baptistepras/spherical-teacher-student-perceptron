@@ -1,7 +1,7 @@
 """
 parameters.py
 
-Ce module permet d'entraîner les hyperparamètres de la méthode 'langevin'. 
+Ce module permet d'entraîner les hyperparamètres.
 Pour modifier les paramètres de l'entraînement, le faire directement dans
 les fonctions avec les variables situées au début de chaque fonction.
 
@@ -33,7 +33,10 @@ Fonctions (celles prises dan main.py et utils.py peuvent être légèrement modi
    - Cherche graphiquement le T optimal avec plusieurs runs pour plus de précision
 
 9. find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None
-   - Cherche graphiquement le meilleur maxiter
+   - Cherche graphiquement le meilleur maxiter (pour langevin)
+
+10. find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None
+   - Cherche graphiquement le meilleur eta
 """
 
 import sklearn.linear_model
@@ -293,6 +296,26 @@ def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Ca
     return w_final, b_final, vec, acceptance
 
 
+# Apprentissage du student
+def apprentissage2(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=100,
+                  ) -> Tuple[np.ndarray, float]:
+    """
+    X: Points de données (un ndarray de taille (N, D))
+    Y: Valeur de vérité des points de données (un ndarray de taille N)
+    w: Vecteur des poids (un ndarray de taille D)
+    bias: Le biais du perceptron
+    floss: Fonction de loss à utiliser
+    fgradient: Fonction de gradient à utiliser
+    fmethod: Méthode d'entraînement à utiliser
+    eta: Le taux d'apprentissage
+    maxiter: Le nombre d'itérations à faire
+    Return: Le vecteur des poids du student (un ndarray de taille D) et son biais entrainés
+    """
+    w0 = w.copy()
+    w_final, b_final = fmethod(X=X, Y=Y, w=w0, bias=bias, floss=floss, fgradient=fgradient, eta=eta, maxiter=maxiter)
+    return w_final, b_final
+
+
 # Evalue la performance du student
 def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float:
     """
@@ -476,8 +499,7 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     plt.show()
 
 
-
-# Cherche graphiquement le maxiter optimal
+# Cherche graphiquement le maxiter optimal (pour langevin)
 def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None:
     """
     Xtrain: train set
@@ -517,6 +539,77 @@ def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray,
     print(f"Affichage sauvegardé sous: {filename}")
 
     plt.show()
+
+
+# Cherche graphiquement le eta optimal
+def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None:
+    """
+    Xtrain: train set
+    Xtest: test set
+    Ytrain: train set labels
+    Ytest: test set labels
+    """
+    runs = 10 # Modifier si besoin
+    # n = 100  # Modifier si besoin
+    # eta_values = np.linspace(0.001, 0.01, n)  # Modifier si besoin
+    eta_values = np.r_[np.linspace(0.001, 0.01, 10), np.linspace(0.02, 0.1, 9), np.linspace(0.2, 1, 9)]  # Modifier si besoin
+    n = len(eta_values)
+    fig, ax = plt.subplots(figsize=(10, 6))
+    start = time()
+
+    all_train_scores = np.zeros((runs, n))
+    all_test_scores = np.zeros((runs, n))
+    
+    # Exécution de plusieurs runs
+    for j in range(runs):
+        w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='gradient')
+        train_scores = []
+        test_scores = []
+
+        # Exécution d'une run en particulier
+        for i, eta in enumerate(eta_values):
+            w_student, b_student = apprentissage2(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
+                                                                  fmethod=fmethod, eta=eta, maxiter=maxiter)
+            
+            train_scores.append(score(Xtrain, Ytrain, w_student, b_student))
+            test_scores.append(score(Xtest, Ytest, w_student, b_student))
+            total_progress = ((j * n + (i + 1)) / (runs * n)) * 100
+            print(f"Test effectué à {total_progress:.2f}% après {(time()-start):.0f} secondes")
+
+        all_train_scores[j, :] = train_scores
+        all_test_scores[j, :] = test_scores
+
+    # Calcul des moyennes et écarts-types
+    mean_train_scores = np.mean(all_train_scores, axis=0)
+    mean_test_scores = np.mean(all_test_scores, axis=0)
+    
+    std_train_scores = np.std(all_train_scores, axis=0)
+    std_test_scores = np.std(all_test_scores, axis=0)
+
+    # Courbes moyennes
+    ax.plot(eta_values, mean_train_scores, '-', color='blue', label="Train (mean)")
+    ax.plot(eta_values, mean_test_scores, '-', color='orange', label="Test (mean)")
+
+    # Zones d'incertitude (± std)
+    ax.fill_between(eta_values, mean_train_scores - std_train_scores, mean_train_scores + std_train_scores, color='blue', alpha=0.2)
+    ax.fill_between(eta_values, mean_test_scores - std_test_scores, mean_test_scores + std_test_scores, color='orange', alpha=0.2)
+
+    # Affichage du graphique
+    ax.set_xlabel("Eta")
+    ax.set_ylabel("Score")
+    ax.set_title(f"Train and Test Scores over different values of Eta\n(Mean ± Std over {runs} runs)")
+    ax.legend()
+    ax.grid(True, linestyle="--", alpha=0.5)
+
+    # Sauvegarde des données
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    folder = os.path.join(base_dir, "plots_optimization")
+    os.makedirs(folder, exist_ok=True)
+    filename = os.path.join(folder, f"Eta_optimization.jpg")
+    fig.savefig(filename, bbox_inches='tight', dpi=300)
+    print(f"Affichage sauvegardé sous: {filename}")
+    
+    plt.show()
         
 
 N = 5000
@@ -531,4 +624,5 @@ Xtrain, Xtest, Ytrain, Ytest = split(X, Y, 0.2)
 # show_different_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
 # find_best_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
 # find_best_T_multiple_runs(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
-find_best_maxiter(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
+# find_best_maxiter(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
+find_best_eta(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)

@@ -39,11 +39,11 @@ Fonctions :
                   fmethod:Callable, eta:float=0.1, maxiter:int=100) -> Tuple[np.ndarray, float]
    - Entraîne le modèle étudiant en utilisant une méthode d'optimisation.
 
-8. score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float
+8. score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> Tuple[float, float]
    - Évalue la précision du modèle sur un ensemble de données.
 
 9. cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, 
-                  maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float]]:
+                  maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float], List[float], List[float]]:
    - Effectue une cross-validation et renvoie les résultats sur train et test
 
 10. intraseque(Y:np.ndarray) -> float
@@ -53,15 +53,16 @@ Fonctions :
               dim:int=2, ptrain:float=None, ptest:float=None) -> None
    - Affiche les données en 2D avec les frontières de décision des modèles Teacher et Student.
 
-12. show_perf(scores_train:List[float], scores_test:List[float]) -> None
+12. show_perf(scores_train:List[float], scores_test:List[float], scores_roctr:List[float], scores_rocte:List[float]) -> None
    - Affiche les performances après cross-validation, sur le train et test sets.
 
-13. show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain:List[float], p0:float, 
-                         save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None
-   - Affiche les performances sur train et test selon le ptrain choisi (avec ptest intrasèque).
+13. show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain:List[float], 
+                        p0:float, roctr:List[List[float]], rocte: List[List[float]],
+                        save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
 
-14. show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:List[float], p0:float, 
-                         save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None
+14. show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:List[float], 
+                        p0:float, roctr:List[List[float]], rocte: List[List[float]],
+                        save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
    - Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque).
 
 """
@@ -237,7 +238,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             Return: La loss pour chaque point (0 pour un point bien classé, 2 pour un point mal classé)
             """
             return 0.5 * np.square((np.sign(pred) - Y))
-        def fgradient(X:np.ndarray, Y:np.ndarray, misclassified:np.ndarray, eta:float=0.1) -> None:
+        def fgradient(X:np.ndarray, Y:np.ndarray, misclassified:np.ndarray, eta:float=0.1, norm:float=1/np.sqrt(D)) -> None:
             """
             Pas entraînable par descente de gradient
             """
@@ -263,7 +264,8 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             _, D = X.shape
             norm = 1.0/np.sqrt(D)
             w0 = w.copy()
-            for _ in range(maxiter):
+            for i in range(maxiter):
+                temp = i
                 predictions = X @ w0 + bias
                 losses = floss(Y, predictions)
                 misclassified = (losses > 0)
@@ -294,8 +296,6 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             amplitude = X.max() - X.min()
             sigma_w = amplitude / 10.0  # On garde 1/10 de l'amplitude des données
             sigma_b = amplitude / 10.0  
-            # vec_E = []  # Sauvegarde des différentes énergies
-            vec_score = []  # Sauvegarde des différents scores
 
             # Fonction de calcul de l'énergie E
             def energy(w_local: np.ndarray, b_local: float, X: np.ndarray, Y: np.ndarray, N: int) -> float:
@@ -315,8 +315,6 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
 
             # Énergie du point initial
             E_old = energy(w0, bias, X, Y, N)
-            # vec_E.append(E_old)
-            vec_score.append(score(X, Y, w0, bias))
             max10 = maxiter/10
 
             for i in range(maxiter):
@@ -336,10 +334,8 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 acceptance = min(np.exp(-delta_E / T), 1)
                 if np.random.rand() <= acceptance:
                     w0, bias = w_new, b_new
-                    E_old = E_new
-                # vec_E.append(E_old)
-                vec_score.append(score(X, Y, w0, bias))            
-
+                    E_old = E_new        
+                
             return w0, bias
     else:
         raise ValueError(f"Il n'existe pas de méthode appelée {method}.")
@@ -411,22 +407,30 @@ def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Ca
 
 
 # Evalue la performance du student avec la balanced accuracy
-def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float:
+def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> Tuple[float, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
     Y: Valeur de vérité des points de données (un ndarray de taille N)
     w: Vecteur des poids (un ndarray de taille D)
     bias: Le biais du perceptron
-    Return: L'accuracy du modèle sur le dataset
+    Return: L'accuracy du modèle sur le dataset (balanced accuracy et ROC)
     """
-    Ypred = np.sign(X @ w + b)
-    accuracy = sklearn.metrics.balanced_accuracy_score(Y, Ypred)
-    return accuracy
+    # Balanced accuracy
+    Ypred = X @ w + b
+    accuracy = sklearn.metrics.balanced_accuracy_score(Y, np.sign(Ypred))
+
+    # ROC
+    if set(np.unique(Y)) == {-1, 1}:
+        Y_bin = (Y + 1) // 2  # Passe les labels en {0, 1} plutôt que {-1, 1}
+    else:
+        Y_bin = Y
+    auc = sklearn.metrics.roc_auc_score(Y_bin, Ypred)
+    return accuracy, auc
 
 
 # Cross-validation sur le train et test sets
 def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, 
-                   maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float]]:
+                   maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float], List[float], List[float]]:
     """
     X: Points de données (un ndarray de taille (N, D))
     Y: Valeur de vérité des points de données (un ndarray de taille N)
@@ -441,12 +445,14 @@ def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, 
     n_splits: Nombre de plis de la cross-validation
     ptrain: Le déséquilibre de classe voulu pour ptrain, None si ptrain=p0 (taux de déséquilibre intrasèque)
     ptest: Le déséquilibre de classe voulu pour ptest, None si ptest=p0 (taux de déséquilibre intrasèque)
-    Return: La liste des scores sur le train set, et ceux sur le test set
+    Return: La liste des scores sur le train set, et ceux sur le test set (balanced et ROC)
     """
     """"""
     kF = sklearn.model_selection.StratifiedShuffleSplit(n_splits=n_splits, test_size=test_size, random_state=424242)
     scores_train = []
     scores_test = []
+    scores_roctr = []
+    scores_rocte = []
     i = 0
     start = time()
 
@@ -466,10 +472,14 @@ def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, 
                                              fmethod=fmethod, eta=eta, maxiter=maxiter)
 
         # Évaluer le modèle sur le pli
-        scores_train.append(score(X_train, Y_train, w_student, b_student))
-        scores_test.append(score(X_test, Y_test, w_student, b_student))
+        scrtr = score(X_train, Y_train, w_student, b_student)
+        scrte = score(X_test, Y_test, w_student, b_student)
+        scores_train.append(scrtr[0])
+        scores_roctr.append(scrtr[1])
+        scores_test.append(scrte[0])
+        scores_rocte.append(scrte[1])
         print(f"Cross-validation réalisée à {(((i)/n_splits)*100):.2f}% après {(time()-start):.0f} secondes")
-    return scores_train, scores_test
+    return scores_train, scores_test, scores_roctr, scores_rocte
 
 
 # Donne le taux de déséquilibre intrasèque du dataset
@@ -526,15 +536,19 @@ def show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float,
 
 
 # Affiche les scores après cross-validation (partiellement chatGPT)
-def show_perf(scores_train:List[float], scores_test:List[float]) -> None:
+def show_perf(scores_train:List[float], scores_test:List[float], scores_roctr:List[float], scores_rocte:List[float]) -> None:
     """
-    scores_train: Liste des scores du train en cross-validation
-    scores_test: Liste des scores du test en cross-validation
+    scores_train: Liste des scores du train en cross-validation (Balanced)
+    scores_test: Liste des scores du test en cross-validation (Balanced)
+    scores_roctr: Liste des scores du train en cross-validation (ROC)
+    scores_rocte: Liste des scores du test en cross-validation (ROC)
     """
     folds = range(1, len(scores_train) + 1)
     plt.figure(figsize=(10, 6))
-    plt.plot(folds, scores_train, marker='o', color='blue', linestyle='-', label='Score Train')
-    plt.plot(folds, scores_test, marker='s', color='orange', linestyle='-', label='Score Test')
+    plt.plot(folds, scores_train, marker='o', color='blue', linestyle='-', label='Balanced Score Train')
+    plt.plot(folds, scores_test, marker='s', color='orange', linestyle='-', label='Balanced Score Test')
+    plt.plot(folds, scores_roctr, marker='o', color='green', linestyle='-', label='ROC Score Train')
+    plt.plot(folds, scores_rocte, marker='s', color='purple', linestyle='-', label='ROC Score Test')
     plt.xlabel("Numéro du pli")
     plt.ylabel("Score")
     plt.title("Performances en Cross-Validation")
@@ -544,13 +558,16 @@ def show_perf(scores_train:List[float], scores_test:List[float]) -> None:
 
 
 # Affiche les performances sur train et test selon le ptrain choisi (avec ptest intrasèque) (partiellement chatGPT)
-def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain:List[float], p0:float, 
+def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain:List[float], 
+                         p0:float, roctr:List[List[float]], rocte: List[List[float]],
                          save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
     """
-    train: Liste des différentes cross-validation sur chaque valeur de ptrain pour train
-    test: Liste des différentes cross-validation sur chaque valeur de ptrain pour test
+    train: Balanced accuracy pour chaque cross-validation sur le train set
+    test: Balanced accuracy pour chaque cross-validation sur le test set
     ptrain: Liste de chaque valeur de ptrain
     p0: Le taux de déséquilibre intrasèque du dataset
+    roctr: ROC accuracy pour chaque cross-validation sur le train set
+    rocte: ROC accuracy pour chaque cross-validation sur le test set
     save: Si None ne rien faire, sinon, sauvegarde le plot dans /plots. Les valeurs dans save sont:
           N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method
     """
@@ -559,23 +576,35 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
     std_train   = [np.std(scores)  for scores in train]
     means_test = [np.mean(scores) for scores in test]
     std_test   = [np.std(scores)  for scores in test]
+    means_roctr = [np.mean(scores) for scores in roctr]
+    std_roctr = [np.std(scores) for scores in roctr]
+    means_rocte = [np.mean(scores) for scores in rocte]
+    std_rocte = [np.std(scores) for scores in rocte]
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Tracer les résultats pour chaque valeur de ptrain
     for i, p in enumerate(ptrain):
-        ax.scatter([p]*len(train[i]), train[i], color='blue', alpha=0.4, label='Train' if i == 0 else "")
-        ax.scatter([p]*len(test[i]), test[i], color='orange', alpha=0.4, marker='s', label='Test' if i == 0 else "")
+        ax.scatter([p]*len(train[i]), train[i], color='blue', alpha=0.4)
+        ax.scatter([p]*len(test[i]), test[i], color='orange', alpha=0.4)
+        ax.scatter([p]*len(roctr[i]), roctr[i], color='green', alpha=0.4)
+        ax.scatter([p]*len(rocte[i]), rocte[i], color='purple', alpha=0.4)
 
     # Tracer la moyenne
-    ax.plot(ptrain, means_train, color='blue', linewidth=2, linestyle='-', label='Train Mean')
-    ax.plot(ptrain, means_test, color='orange', linewidth=2, linestyle='-', label='Test Mean')
+    ax.plot(ptrain, means_train, color='blue', linewidth=2, linestyle='-', label='Balanced Train')
+    ax.plot(ptrain, means_test, color='orange', linewidth=2, linestyle='-', marker='s', label='Balanced Test')
+    ax.plot(ptrain, means_roctr, color='green', linewidth=2, linestyle='-', label='ROC Train')
+    ax.plot(ptrain, means_rocte, color='purple', linewidth=2, linestyle='-', marker='s', label='ROC Test')
     
     # Remplir l'espace autour de la moyenne avec ±1 écart-type
     ax.fill_between(ptrain, [m - s for m, s in zip(means_train, std_train)], 
-                    [m + s for m, s in zip(means_train, std_train)], color='blue', alpha=0.1, label='Train Std Dev')
+                    [m + s for m, s in zip(means_train, std_train)], color='blue', alpha=0.1)
     ax.fill_between(ptrain,[m - s for m, s in zip(means_test, std_test)],
-                    [m + s for m, s in zip(means_test, std_test)], color='orange', alpha=0.1, label='Test Std Dev')
+                    [m + s for m, s in zip(means_test, std_test)], color='orange', alpha=0.1)
+    ax.fill_between(ptrain, [m - s for m, s in zip(means_roctr, std_roctr)], 
+                    [m + s for m, s in zip(means_roctr, std_roctr)], color='green', alpha=0.1)
+    ax.fill_between(ptrain,[m - s for m, s in zip(means_rocte, std_rocte)],
+                    [m + s for m, s in zip(means_rocte, std_rocte)], color='purple', alpha=0.1)
     
     # Légende hyper-paramètres
     if save is not None:
@@ -593,9 +622,13 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
 
     # Affichage
     ax.set_xlabel("pTrain")
-    ax.set_ylabel("Balanced Accuracy")
+    ax.set_ylabel("Score")
     ax.set_title(f"Cross-Validation over 42 different re-sampling of the train set")
-    ax.legend()
+    handles = [plt.Line2D([0], [0], color='blue', lw=2, label='Balanced Train'),
+    plt.Line2D([0], [0], color='orange', lw=2, label='Balanced Test'),
+    plt.Line2D([0], [0], color='green', lw=2, label='ROC Train'),
+    plt.Line2D([0], [0], color='purple', lw=2, label='ROC Test')]
+    ax.legend(handles=handles, loc='center left', bbox_to_anchor=(1.05, 0.1))
     ax.grid(True)
     fig.subplots_adjust(right=0.75)
 
@@ -611,38 +644,53 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
 
 
 # Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque) (partiellement chatGPT)
-def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:List[float], p0:float, 
-                         save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
+def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:List[float], 
+                        p0:float, roctr:List[List[float]], rocte: List[List[float]],
+                        save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
     """
-    train: Liste des différentes cross-validation sur chaque valeur de ptrain pour train
-    test: Liste des différentes cross-validation sur chaque valeur de ptrain pour test
+    train: Balanced accuracy pour chaque cross-validation sur le train set
+    test: Balanced accuracy pour chaque cross-validation sur le test set
     ptrain: Liste de chaque valeur de ptrain
     p0: Le taux de déséquilibre intrasèque du dataset
+    roctr: ROC accuracy pour chaque cross-validation sur le train set
+    rocte: ROC accuracy pour chaque cross-validation sur le test set
     save: Si None ne rien faire, sinon, sauvegarde le plot dans /plots. Les valeurs dans save sont:
           N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method
     """
     # Calcul des moyennes et écarts-types
     means_train = [np.mean(scores) for scores in train]
-    std_train   = [np.std(scores)  for scores in train]
+    std_train   = [np.std(scores) for scores in train]
     means_test = [np.mean(scores) for scores in test]
-    std_test   = [np.std(scores)  for scores in test]
+    std_test   = [np.std(scores) for scores in test]
+    means_roctr = [np.mean(scores) for scores in roctr]
+    std_roctr = [np.std(scores) for scores in roctr]
+    means_rocte = [np.mean(scores) for scores in rocte]
+    std_rocte = [np.std(scores) for scores in rocte]
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
     # Tracer les résultats pour chaque valeur de ptrain
     for i, p in enumerate(ptest):
-        ax.scatter([p]*len(train[i]), train[i], color='blue', alpha=0.4, label='Train' if i == 0 else "")
-        ax.scatter([p]*len(test[i]), test[i], color='orange', alpha=0.4, marker='s', label='Test' if i == 0 else "")
+        ax.scatter([p]*len(train[i]), train[i], color='blue', alpha=0.4)
+        ax.scatter([p]*len(test[i]), test[i], color='orange', alpha=0.4, marker='s')
+        ax.scatter([p]*len(roctr[i]), roctr[i], color='green', alpha=0.4)
+        ax.scatter([p]*len(rocte[i]), rocte[i], color='purple', alpha=0.4, marker='s')
 
     # Tracer la moyenne
-    ax.plot(ptest, means_train, color='blue', linewidth=2, linestyle='-', label='Train Mean')
-    ax.plot(ptest, means_test, color='orange', linewidth=2, linestyle='-', label='Test Mean')
+    ax.plot(ptest, means_train, color='blue', linewidth=2, linestyle='-', label='Balanced Train')
+    ax.plot(ptest, means_test, color='orange', linewidth=2, linestyle='-', label='Balanced Test')
+    ax.plot(ptest, means_roctr, color='green', linewidth=2, linestyle='-', label='ROC Train')
+    ax.plot(ptest, means_rocte, color='purple', linewidth=2, linestyle='-', label='ROC Test')
     
     # Remplir l'espace autour de la moyenne avec ±1 écart-type
     ax.fill_between(ptest, [m - s for m, s in zip(means_train, std_train)], 
-                    [m + s for m, s in zip(means_train, std_train)], color='blue', alpha=0.1, label='Train Std Dev')
+                    [m + s for m, s in zip(means_train, std_train)], color='blue', alpha=0.1)
     ax.fill_between(ptest,[m - s for m, s in zip(means_test, std_test)],
-                    [m + s for m, s in zip(means_test, std_test)], color='orange', alpha=0.1, label='Test Std Dev')
+                    [m + s for m, s in zip(means_test, std_test)], color='orange', alpha=0.1)
+    ax.fill_between(ptest, [m - s for m, s in zip(means_roctr, std_roctr)], 
+                    [m + s for m, s in zip(means_roctr, std_roctr)], color='green', alpha=0.1)
+    ax.fill_between(ptest,[m - s for m, s in zip(means_rocte, std_rocte)],
+                    [m + s for m, s in zip(means_rocte, std_rocte)], color='purple', alpha=0.1)
     
     # Légende hyper-paramètres
     if save is not None:
@@ -655,9 +703,13 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
 
     # Affichage
     ax.set_xlabel("pTest")
-    ax.set_ylabel("Balanced Accuracy")
+    ax.set_ylabel("Score")
     ax.set_title(f"Cross-Validation over 42 different re-sampling of the test set")
-    ax.legend()
+    handles = [plt.Line2D([0], [0], color='blue', lw=2, label='Balanced Train'),
+    plt.Line2D([0], [0], color='orange', lw=2, label='Balanced Test'),
+    plt.Line2D([0], [0], color='green', lw=2, label='ROC Train'),
+    plt.Line2D([0], [0], color='purple', lw=2, label='ROC Test')]
+    ax.legend(handles=handles, loc='center left', bbox_to_anchor=(1.05, 0.1))
     ax.grid(True)
     fig.subplots_adjust(right=0.75)
 
@@ -687,17 +739,20 @@ print(score(X_train, Y_train, w_student, b_student))
 print(score(X_test, Y_test, w_student, b_student))
 show_data(X=X, Y=Y, w_teacher=w_teacher, b_teacher=b_teacher, w_student=w_student, b_student=b_student, 
           dim=X.shape[1], ptrain=0.5, ptest=None)
-scores_train1, scores_test1 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
+scores_train1, scores_test1, scrtr1, scrte1 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
                                              maxiter=maxiter, test_size=test_size, n_splits=n_splits, ptrain=None, ptest=None)
-scores_train2, scores_test2 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
+scores_train2, scores_test2, scrtr2, scrte2 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
                                              maxiter=maxiter, test_size=test_size, n_splits=n_splits, ptrain=0.1, ptest=None)
-scores_train3, scores_test3 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
+scores_train3, scores_test3, scrtr3, scrte3 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
                                              maxiter=maxiter, test_size=test_size, n_splits=n_splits, ptrain=0.3, ptest=None)
-scores_train4, scores_test4 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
+scores_train4, scores_test4, scrtr4, scrte4 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
                                              maxiter=maxiter, test_size=test_size, n_splits=n_splits, ptrain=0.5, ptest=None)
-scores_train5, scores_test5 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
+scores_train5, scores_test5, scrtr5, scrte5 = cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, 
                                              maxiter=maxiter, test_size=test_size, n_splits=n_splits, ptrain=0.7, ptest=None)
-show_perf(scores_train=scores_train1, scores_test=scores_test1)
+show_perf(scores_train=scores_train1, scores_test=scores_test1, score_roctr=score_roctr1, score_rocte=score_rocte1)
 show_perf_per_ptrain(train=[scores_train2, scores_train3, scores_train4, scores_train5], 
-                     test=[scores_test2, scores_test3, scores_test4, scores_test5], ptrain=[0.1, 0.3, 0.5, 0.7], p0=intraseque(Y=Y), save=None)
+                     test=[scores_test2, scores_test3, scores_test4, scores_test5], 
+                     roctr=[scrtr2, scrtr3, scrtr4, scrtr5],
+                     rocte=[scrte2, scrte3, scrte4, scrte5],
+                     ptrain=[0.1, 0.3, 0.5, 0.7], p0=intraseque(Y=Y), save=None)
 """

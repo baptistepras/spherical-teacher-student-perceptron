@@ -265,7 +265,6 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             norm = 1.0/np.sqrt(D)
             w0 = w.copy()
             for i in range(maxiter):
-                temp = i
                 predictions = X @ w0 + bias
                 losses = floss(Y, predictions)
                 misclassified = (losses > 0)
@@ -334,8 +333,8 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 acceptance = min(np.exp(-delta_E / T), 1)
                 if np.random.rand() <= acceptance:
                     w0, bias = w_new, b_new
-                    E_old = E_new        
-                
+                    E_old = E_new
+
             return w0, bias
     else:
         raise ValueError(f"Il n'existe pas de méthode appelée {method}.")
@@ -615,7 +614,7 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         else:
             textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
-                       f"T={0.01}\nMax Iter={7000}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
+                       f"T={0.01}\nMax Iter={15000}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(1.05, 0.5, textstr, transform=ax.transAxes, fontsize=12, verticalalignment='center', bbox=props)
@@ -695,9 +694,14 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
     # Légende hyper-paramètres
     if save is not None:
         N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method = save
-        textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
-                   f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
-                   f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
+        if method == 'gradient':
+            textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
+                       f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
+                       f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
+        else:
+            textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
+                       f"T={0.01}\nMax Iter={15000}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
+                       f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(1.05, 0.5, textstr, transform=ax.transAxes, fontsize=12, verticalalignment='center', bbox=props)
 

@@ -17,7 +17,7 @@ The implemented perceptron follows a `spherical normalization` scheme. This mean
 In main.py, you can adjust the following hyperparameters when calling the `exec()` function:
 - N: Size of the dataset
 - D: Dimension of each data point
-- bias: Bias to introduce in the teacher (`0` gives 2 `perfectly balanced` classes, `-1` gives a `75-25 imbalance` (75% -1, 25% +1))
+- bias: Bias to introduce in the teacher (`0` gives 2 `perfectly balanced` classes, `-1` gives a `85-15 imbalance` (85% -1, 15% +1))
 - test_size: Size of the test set when splitting in train/test set
 - eta: Learning rate
 - maxiter: Maximum number of iterations during the learning of the student. Be careful, a high number will make the program longer very fast

@@ -36,13 +36,13 @@ Fonctions :
    - Crée un déséquilibre de classe dans les données.
 
 7. apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient: Callable, 
-                  fmethod:Callable, eta:float=0.1, maxiter:int=100) -> Tuple[np.ndarray, float]
+                  fmethod:Callable, loss:str='hinge', eta:float=0.1, maxiter:int=100) -> Tuple[np.ndarray, float]
    - Entraîne le modèle étudiant en utilisant une méthode d'optimisation.
 
 8. score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> Tuple[float, float]
    - Évalue la précision du modèle sur un ensemble de données.
 
-9. cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, 
+9. cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, loss:str='hinge', eta:float=0.1, 
                   maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float], List[float], List[float]]:
    - Effectue une cross-validation et renvoie les résultats sur train et test
 
@@ -248,7 +248,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
 
     # Méthode d'apprentissage
     if method=='gradient':
-        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100, 
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, loss:str='hinge', eta:float=0.1, maxiter:int=100,
                     ) -> Tuple[np.ndarray, float] :
             """
             X: Points de données (un ndarray de taille (N,D))
@@ -275,7 +275,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 bias += b_temp
             return w0, bias
     elif method=='langevin':
-        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100,
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, loss:str='hinge', eta:float=0.1, maxiter:int=100,
                     ) -> Tuple[np.ndarray, float] :
             """
             X: Points de données (un ndarray de taille (N,D))
@@ -289,8 +289,12 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
             N, D = X.shape
-            temp = 0.003  # Température à régler
-            maxiter = 15000  # Maxiter à régler
+            if loss == 'square':
+                temp = 0.01  # Température à régler
+                maxiter = 7000  # Maxiter à régler
+            else:
+                temp = 0.003  # Température à régler
+                maxiter = 15000  # Maxiter à régler
             w0 = w.copy()
             amplitude = X.max() - X.min()
             sigma_w = amplitude / 10.0  # On garde 1/10 de l'amplitude des données
@@ -309,7 +313,8 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 # E = somme de la loss sur tous les points
                 predictions = X @ w_local + b_local
                 losses = floss(Y, predictions)
-                return losses.mean()
+                res = np.mean(losses)
+                return res
 
 
             # Énergie du point initial
@@ -386,7 +391,7 @@ def imbalance(X:np.ndarray, Y:np.ndarray, rate:float=None) -> Tuple[np.ndarray, 
 
 
 # Apprentissage du student
-def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=100,
+def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, loss:str='hinge', eta:float=0.1, maxiter:int=100,
                   ) -> Tuple[np.ndarray, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
@@ -401,7 +406,7 @@ def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Ca
     Return: Le vecteur des poids du student (un ndarray de taille D) et son biais entrainés
     """
     w0 = w.copy()
-    w_final, b_final = fmethod(X=X, Y=Y, w=w0, bias=bias, floss=floss, fgradient=fgradient, eta=eta, maxiter=maxiter)
+    w_final, b_final = fmethod(X=X, Y=Y, w=w0, bias=bias, floss=floss, fgradient=fgradient, loss=loss, eta=eta, maxiter=maxiter)
     return w_final, b_final
 
 
@@ -428,7 +433,7 @@ def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> Tuple[float, flo
 
 
 # Cross-validation sur le train et test sets
-def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, 
+def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, loss:str='hinge', eta:float=0.1, 
                    maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float], List[float], List[float]]:
     """
     X: Points de données (un ndarray de taille (N, D))
@@ -468,7 +473,7 @@ def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, 
         
         # Entraîner le student
         w_student, b_student = apprentissage(X=X_train, Y=Y_train, w=w0, bias=b0, floss=floss, fgradient=fgradient, 
-                                             fmethod=fmethod, eta=eta, maxiter=maxiter)
+                                             fmethod=fmethod, loss=loss, eta=eta, maxiter=maxiter)
 
         # Évaluer le modèle sur le pli
         scrtr = score(X_train, Y_train, w_student, b_student)
@@ -613,8 +618,15 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
                        f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         else:
+            if loss == 'square':
+                loss = 'error-counting'
+                maxiter = 7000
+                t = 0.01
+            else:
+                maxiter = 15000
+                t = 0.003
             textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
-                       f"T={0.01}\nMax Iter={15000}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
+                       f"T={t}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(1.05, 0.5, textstr, transform=ax.transAxes, fontsize=12, verticalalignment='center', bbox=props)
@@ -639,7 +651,8 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
         filename = os.path.join(folder, f"TRAIN_N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}_{loss}_{method}.jpg")
         fig.savefig(filename, bbox_inches='tight', dpi=300)
         print(f"Affichage sauvegardé sous: {filename}")
-    plt.show()
+    # plt.show()
+    return fig
 
 
 # Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque) (partiellement chatGPT)
@@ -699,8 +712,15 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
                        f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         else:
+            if loss == 'square':
+                loss = 'error-counting'
+                maxiter = 7000
+                t = 0.01
+            else:
+                maxiter = 15000
+                t = 0.003
             textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
-                       f"T={0.01}\nMax Iter={15000}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
+                       f"T={t}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
         ax.text(1.05, 0.5, textstr, transform=ax.transAxes, fontsize=12, verticalalignment='center', bbox=props)
@@ -725,7 +745,8 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
         filename = os.path.join(folder, f"TEST_N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}_{loss}_{method}.jpg")
         fig.savefig(filename, bbox_inches='tight', dpi=300)
         print(f"Affichage sauvegardé sous: {filename}")
-    plt.show()
+    # plt.show()
+    return fig
 
 
 # Exemple d'utilisation
@@ -737,7 +758,7 @@ Y, w_teacher, b_teacher = teacher(X=X, bias=bias, noise_std=noise_std, show=True
 w_init, b_init, floss, fgradient, fmethod = student(X=X, loss='perceptron', method='gradient')
 X_train, X_test, Y_train, Y_test = split(X=X, Y=Y, test_size=test_size)
 X_train, Y_train = imbalance(X=X_train, Y=Y_train, rate=0.5)
-w_student, b_student = apprentissage(X=X_train, Y=Y_train, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, eta=eta, maxiter=maxiter)
+w_student, b_student = apprentissage(X=X_train, Y=Y_train, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, fmethod=fmethod, loss='perceptron', eta=eta, maxiter=maxiter)
 print(Y_train.mean(), Y_test.mean(), Y.mean())
 print(score(X_train, Y_train, w_student, b_student))
 print(score(X_test, Y_test, w_student, b_student))

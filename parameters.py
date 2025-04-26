@@ -23,20 +23,20 @@ Fonctions (celles prises dan main.py et utils.py peuvent être légèrement modi
 5. score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float
    - Évalue la précision du modèle sur un ensemble de données.
 
-6. show_different_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None
-   - Montre le graphe au fur et à mesure des itérations sur différentes valeurs de T
+6. show_different_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
+   - Montre le graphe au fur et à mesure des itérations sur différentes valeurs de T pour la dynamique de Langevin
 
-7. find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None
-   - Cherche graphiquement le T optimal
+7. find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
+   - Cherche graphiquement le T optimal pour la dynamique de Langevin
 
-8. find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None
-   - Cherche graphiquement le T optimal avec plusieurs runs pour plus de précision
+8. find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
+   - Cherche graphiquement le T optimal pour la dynamique de Langevin avec plusieurs runs pour plus de précision
 
-9. find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None
-   - Cherche graphiquement le meilleur maxiter (pour langevin)
+9. find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str, method: str) -> None
+   - Cherche graphiquement le meilleur maxiter pour la dynamique de Langevin ou le maxiter optimal pour la descente de gradient
 
-10. find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None
-   - Cherche graphiquement le meilleur eta
+10. find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
+   - Cherche graphiquement le meilleur eta pour la descente de gradient
 """
 
 import sklearn.linear_model
@@ -48,9 +48,8 @@ import numpy as np
 import os
 from typing import Tuple, Callable, List
 from time import time
-maxiter = 15000
-T = 0.003
-
+maxiter = 4000
+T = 0.005
 
 # Récupère le jeu de données voulu (chatGPT)
 # Si les données n'existe pas, les créé
@@ -77,7 +76,7 @@ def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple
 def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple[np.ndarray, float, Callable, Callable, Callable]:
     """
     X: Points de données (un ndarray de taille (N, D))
-    loss: Fonction de loss à utiliser ('perceptron', 'hinge', 'square')
+    loss: Fonction de loss à utiliser ('perceptron', loss, 'error-counting')
     method: Méthode d'entraînement à utiliser ('gradient', 'langevin')
     Return: Le vecteur w des poids (un ndarray de taille D), le biais, la fonction de loss, la fonction de gradient
              et la méthode pour entraîner le student
@@ -109,7 +108,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             w = (eta * norm) * X[misclassified].T @ Y[misclassified]
             b = eta * norm * np.sum(Y[misclassified])
             return w, b
-    elif loss=='hinge':
+    elif loss==loss:
         def floss(Y: np.ndarray, pred: np.ndarray) -> np.ndarray:
             """
             Y: Valeur de vérité du point
@@ -131,7 +130,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             w = (eta * norm) * X[misclassified].T @ Y[misclassified]
             b = eta * norm * np.sum(Y[misclassified])
             return w, b
-    elif loss=='square':
+    elif loss=='error-counting':
         def floss(Y: np.ndarray, pred: np.ndarray) -> np.ndarray:
             """
             Y: Valeur de vérité du point
@@ -143,13 +142,13 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             """
             Pas entraînable par descente de gradient
             """
-            raise NameError("La loss square n'est pas entraînable par descente de gradient")
+            raise NameError("La loss error-counting n'est pas entraînable par descente de gradient")
     else:
         raise ValueError(f"Il n'existe pas de loss appelée {loss}.")
 
     # Méthode d'apprentissage
     if method=='gradient':
-        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100, 
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100, t:float=1,
                     ) -> Tuple[np.ndarray, float] :
             """
             X: Points de données (un ndarray de taille (N,D))
@@ -165,7 +164,11 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             _, D = X.shape
             norm = 1.0/np.sqrt(D)
             w0 = w.copy()
+            vec_score = []
+            vec_score.append(score(X, Y, w0, bias))
+            somme = 0
             for _ in range(maxiter):
+                somme += 1
                 predictions = X @ w0 + bias
                 losses = floss(Y, predictions)
                 misclassified = (losses > 0)
@@ -174,7 +177,8 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 w_temp, b_temp = fgradient(X=X, Y=Y, misclassified=misclassified, eta=eta, norm=norm)
                 w0 += w_temp
                 bias += b_temp
-            return w0, bias
+                vec_score.append(score(X, Y, w0, bias))
+            return w0, bias, vec_score, somme
     elif method=='langevin':
         def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100, t=0.3
                     ) -> Tuple[np.ndarray, float] :
@@ -211,7 +215,13 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 # E = somme de la loss sur tous les points
                 predictions = X @ w_local + b_local
                 losses = floss(Y, predictions)
-                return losses.mean()
+                # On calcule l'énergie balanced
+                class_indices = ((Y + 1) // 2).astype(int)
+                class_counts = np.bincount(class_indices)
+                weights = np.where(Y == -1, 1 / class_counts[0], 1 / class_counts[1])
+                weights /= weights.sum()
+                weighted_loss = np.sum(losses * weights)
+                return weighted_loss
 
             # Énergie du point initial
             E_old = energy(w0, bias, X, Y, N)
@@ -312,7 +322,7 @@ def apprentissage2(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:C
     Return: Le vecteur des poids du student (un ndarray de taille D) et son biais entrainés
     """
     w0 = w.copy()
-    w_final, b_final = fmethod(X=X, Y=Y, w=w0, bias=bias, floss=floss, fgradient=fgradient, eta=eta, maxiter=maxiter)
+    w_final, b_final, _, _= fmethod(X=X, Y=Y, w=w0, bias=bias, floss=floss, fgradient=fgradient, eta=eta, maxiter=maxiter)
     return w_final, b_final
 
 
@@ -331,15 +341,16 @@ def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float:
 
 
 # Montre sur différentes températures le résultat de l'apprentissage au fur et à mesure du temps
-def show_different_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None:
+def show_different_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None:
     """
     Xtrain: train set
     Xtest: test set
     Ytrain: train set labels
     Ytest: test set labels
+    loss: La loss à utiliser
     """
     t = np.linspace(0.01, 0.05, 5)  # Modifier si besoin
-    w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='langevin')
+    w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method='langevin')
     fig, axes = plt.subplots(5, 1, figsize=(20, 6), sharex=True, sharey=True)
     fig.subplots_adjust(hspace=0.8)
     cmap = plt.get_cmap("tab10")
@@ -364,17 +375,18 @@ def show_different_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, 
 
 
 # Cherche graphiquement le T optimal
-def find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None:
+def find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None:
     """
     Xtrain: train set
     Xtest: test set
     Ytrain: train set labels
     Ytest: test set labels
+    loss: La loss à utiliser
     """
     n = 10  # Modifier si besoin
     t_values = np.linspace(0.005, 0.05, n)   # Modifier si besoin
     _, ax = plt.subplots(figsize=(10, 6))
-    w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='square', method='langevin')
+    w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method='langevin')
     train_scores = []
     test_scores = []
     acceptances = []
@@ -421,17 +433,19 @@ def find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest
 
 
 # Cherche graphiquement le T optimal plus précisément
-def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None:
+def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None:
     """
     Xtrain: train set
     Xtest: test set
     Ytrain: train set labels
     Ytest: test set labels
+    loss: La loss à utiliser
     """
-    runs = 10 # Modifier si besoin
+    runs = 5 # Modifier si besoin
     n = 10  # Modifier si besoin
-    t_values = np.linspace(0.001, 0.01, n)  # Modifier si besoin
-    # t_values = np.r_[np.linspace(0.005, 0.01, 5), np.linspace(0.02, 0.05, 4)]  # Modifier si besoin
+    t_values = np.linspace(0.001, 0.01, n)  # Pour vérifier un intervalle
+    # t_values = np.r_[np.linspace(0.0001, 0.001, 10), np.linspace(0.002, 0.01, 9)]  # Pour ajouter comparer deux intervalles
+    # t_values = np.array([0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1])  # Pour une vision globale
     n = len(t_values)
     fig, ax = plt.subplots(figsize=(10, 6))
     start = time()
@@ -442,7 +456,7 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     
     # Exécution de plusieurs runs
     for j in range(runs):
-        w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='langevin')
+        w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method='langevin')
         train_scores = []
         test_scores = []
         acceptances = []
@@ -472,9 +486,9 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     std_acceptances = np.std(all_acceptances, axis=0)
 
     # Courbes moyennes
-    ax.plot(t_values, mean_train_scores, '-', color='blue', label="Train (mean)")
-    ax.plot(t_values, mean_test_scores, '-', color='orange', label="Test (mean)")
-    ax.plot(t_values, mean_acceptances, '-', color='green', label="Acceptance (mean)")
+    ax.plot(t_values, mean_train_scores, '-', color='blue', marker='x', label="Train (mean)")
+    ax.plot(t_values, mean_test_scores, '-', color='orange', marker='x', label="Test (mean)")
+    ax.plot(t_values, mean_acceptances, '-', color='green', marker='x', label="Acceptance (mean)")
 
     # Zones d'incertitude (± std)
     ax.fill_between(t_values, mean_train_scores - std_train_scores, mean_train_scores + std_train_scores, color='blue', alpha=0.2)
@@ -482,6 +496,7 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     ax.fill_between(t_values, mean_acceptances - std_acceptances, mean_acceptances + std_acceptances, color='green', alpha=0.2)
 
     # Affichage du graphique
+    # ax.set_xscale('log')
     ax.set_xlabel("T")
     ax.set_ylabel("Score / Acceptance Rate")
     ax.set_title(f"Train and Test Scores over different values of T\n(Mean ± Std over {runs} runs)")
@@ -500,30 +515,46 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
 
 
 # Cherche graphiquement le maxiter optimal (pour langevin)
-def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None:
+def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str, method: str) -> None:
     """
     Xtrain: train set
     Xtest: test set
     Ytrain: train set labels
     Ytest: test set labels
+    loss: La loss à utiliser
+    method: La méthode à utiliser
     """
-    runs = 5  # Modifier si besoin
-    iter = 20000  # Modifier si besoin
+    if method == 'gradient':
+        runs = 1000  # Beaucou de runs nécessaires
+        iter = 500  # Modifier si besoin
+    else:
+        runs = 5  # Peu de runs nécessaires
+        iter = 20000  # Modifier si besoin
     fig, ax = plt.subplots(figsize=(10, 6))
     cmap = plt.get_cmap("tab10")
     start = time()
+    iters = []
 
     # Apprentissage
     for i in range(runs):
-        w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='langevin')
-        _, _, vec, _ = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
+        w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method=method)
+        _, _, vec, somme = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
                                                                   fmethod=fmethod, eta=0.1, maxiter=iter, t=T)
 
         # Affichage des courbes
-        ax.plot(np.linspace(0, iter, iter+1), vec, '-', color=cmap(i), label=f"run{i+1}")
+        if method == 'gradient':
+            iters.append(somme)
+            ax.plot(np.linspace(0, somme, somme), vec, '-', color='blue')
+        else:
+            ax.plot(np.linspace(0, iter, iter+1), vec, '-', color=cmap(i), label=f"run{i+1}")
         print(f"Test effectué à {((i+1)/runs*100):.2f}% après {(time()-start):.0f} secondes")
     
     # Affichage du graphique
+    if method == 'gradient':
+        top5 = sorted(iters, reverse=True)[:5]
+        textstr = f"Nombre de\n runs={runs}\nMax Iters:\n" + "\n".join([f"{v}" for v in top5])
+        ax.text(1.02, 0.5, textstr, transform=ax.transAxes, fontsize=10, verticalalignment='center',
+                bbox=dict(boxstyle='round', facecolor='white', alpha=0.5))
     ax.set_xlabel("maxiter")
     ax.set_ylabel("Score")
     ax.set_title(f"Train Scores over different values of maxiter")
@@ -542,17 +573,19 @@ def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray,
 
 
 # Cherche graphiquement le eta optimal
-def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray) -> None:
+def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None:
     """
     Xtrain: train set
     Xtest: test set
     Ytrain: train set labels
     Ytest: test set labels
+    loss: La loss à utiliser
     """
     runs = 10 # Modifier si besoin
-    # n = 100  # Modifier si besoin
-    # eta_values = np.linspace(0.001, 0.01, n)  # Modifier si besoin
-    eta_values = np.r_[np.linspace(0.001, 0.01, 10), np.linspace(0.02, 0.1, 9), np.linspace(0.2, 1, 9)]  # Modifier si besoin
+    n = 100  # Modifier si besoin
+    eta_values = np.linspace(1, 10, n)  # Pour vérifier un intervalle
+    # eta_values = np.r_[np.linspace(0.002, 0.01, 9), np.linspace(0.2, 1, 9)]  # Pour ajouter comparer deux intervalles
+    # eta_values = np.array([0.001, 0.01, 0.1, 1])  # Pour une vision globale
     n = len(eta_values)
     fig, ax = plt.subplots(figsize=(10, 6))
     start = time()
@@ -562,14 +595,14 @@ def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Yte
     
     # Exécution de plusieurs runs
     for j in range(runs):
-        w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='gradient')
+        w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method='gradient')
         train_scores = []
         test_scores = []
 
         # Exécution d'une run en particulier
         for i, eta in enumerate(eta_values):
             w_student, b_student = apprentissage2(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
-                                                                  fmethod=fmethod, eta=eta, maxiter=maxiter)
+                                                                  fmethod=fmethod, eta=eta, maxiter=500)
             
             train_scores.append(score(Xtrain, Ytrain, w_student, b_student))
             test_scores.append(score(Xtest, Ytest, w_student, b_student))
@@ -612,17 +645,17 @@ def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Yte
     plt.show()
         
 
-N = 5000
-D = 500
+N = 1000
+D = 100
 bias = -1.0
 noise_std = 0.0
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)
 Xtrain, Xtest, Ytrain, Ytest = split(X, Y, 0.2)
-# w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss='hinge', method='langevin')
+# w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method='langevin')
 # w_student, b_student, _, _ = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
 #                                                                  fmethod=fmethod, eta=0.1, maxiter=maxiter, t=T)
-# show_different_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
-# find_best_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
-# find_best_T_multiple_runs(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
-# find_best_maxiter(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
-find_best_eta(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest)
+# show_different_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')
+# find_best_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')
+find_best_T_multiple_runs(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')
+# find_best_maxiter(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge', method='langevin')
+# find_best_eta(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')

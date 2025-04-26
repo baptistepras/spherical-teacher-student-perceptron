@@ -176,7 +176,7 @@ def teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=1.0, show:bool=False)
 def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple[np.ndarray, float, Callable, Callable, Callable]:
     """
     X: Points de données (un ndarray de taille (N, D))
-    loss: Fonction de loss à utiliser ('perceptron', 'hinge', 'square')
+    loss: Fonction de loss à utiliser ('perceptron', 'hinge', 'error-counting')
     method: Méthode d'entraînement à utiliser ('gradient', 'langevin')
     Return: Le vecteur w des poids (un ndarray de taille D), le biais, la fonction de loss, la fonction de gradient
              et la méthode pour entraîner le student
@@ -230,19 +230,19 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             w = (eta * norm) * X[misclassified].T @ Y[misclassified]
             b = eta * norm * np.sum(Y[misclassified])
             return w, b
-    elif loss=='square':
+    elif loss=='error-counting':
         def floss(Y: np.ndarray, pred: np.ndarray) -> np.ndarray:
             """
             Y: Valeur de vérité du point
             pred: Prédictions faites par le modèle
             Return: La loss pour chaque point (0 pour un point bien classé, 2 pour un point mal classé)
             """
-            return 0.5 * np.square((np.sign(pred) - Y))
+            return 0.5 * np.square(np.sign(pred) - Y)
         def fgradient(X:np.ndarray, Y:np.ndarray, misclassified:np.ndarray, eta:float=0.1, norm:float=1/np.sqrt(D)) -> None:
             """
             Pas entraînable par descente de gradient
             """
-            raise NameError("La loss square n'est pas entraînable par descente de gradient")
+            raise NameError("La loss error-counting n'est pas entraînable par descente de gradient")
     else:
         raise ValueError(f"Il n'existe pas de loss appelée {loss}.")
 
@@ -264,7 +264,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             _, D = X.shape
             norm = 1.0/np.sqrt(D)
             w0 = w.copy()
-            for i in range(maxiter):
+            for _ in range(maxiter):
                 predictions = X @ w0 + bias
                 losses = floss(Y, predictions)
                 misclassified = (losses > 0)
@@ -289,12 +289,8 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
             N, D = X.shape
-            if loss == 'square':
-                temp = 0.01  # Température à régler
-                maxiter = 7000  # Maxiter à régler
-            else:
-                temp = 0.003  # Température à régler
-                maxiter = 15000  # Maxiter à régler
+            temp = 0.005  # Température à régler
+            maxiter = 4000  # Maxiter à régler
             w0 = w.copy()
             amplitude = X.max() - X.min()
             sigma_w = amplitude / 10.0  # On garde 1/10 de l'amplitude des données
@@ -313,8 +309,13 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 # E = somme de la loss sur tous les points
                 predictions = X @ w_local + b_local
                 losses = floss(Y, predictions)
-                res = np.mean(losses)
-                return res
+                # On calcule l'énergie balanced
+                class_indices = ((Y + 1) // 2).astype(int)
+                class_counts = np.bincount(class_indices)
+                weights = np.where(Y == -1, 1 / class_counts[0], 1 / class_counts[1])
+                weights /= weights.sum()
+                weighted_loss = np.sum(losses * weights)
+                return weighted_loss
 
 
             # Énergie du point initial
@@ -370,9 +371,11 @@ def imbalance(X:np.ndarray, Y:np.ndarray, rate:float=None) -> Tuple[np.ndarray, 
         # Indices de chaque classe
         pos_idx = np.where(Y > 0)[0]
         neg_idx = np.where(Y < 0)[0]
-        N = len(Y)
+        N = X.shape[0]
         desired_pos = int(round(rate * N))
         desired_neg = N - desired_pos
+        if desired_neg == 0 or desired_pos == 0:
+            return X, Y
 
         # Si on a assez de positifs, on fait un sous-échantillonnage
         # Sinon on fait un sur-échantillonnage
@@ -618,13 +621,8 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
                        f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         else:
-            if loss == 'square':
-                loss = 'error-counting'
-                maxiter = 7000
-                t = 0.01
-            else:
-                maxiter = 15000
-                t = 0.003
+            maxiter = 4000
+            t = 0.005
             textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
                        f"T={t}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
@@ -651,7 +649,7 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
         filename = os.path.join(folder, f"TRAIN_N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}_{loss}_{method}.jpg")
         fig.savefig(filename, bbox_inches='tight', dpi=300)
         print(f"Affichage sauvegardé sous: {filename}")
-    # plt.show()
+    plt.show()
     return fig
 
 
@@ -712,13 +710,8 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
                        f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         else:
-            if loss == 'square':
-                loss = 'error-counting'
-                maxiter = 7000
-                t = 0.01
-            else:
-                maxiter = 15000
-                t = 0.003
+            maxiter = 4000
+            t = 0.005
             textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
                        f"T={t}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
@@ -745,7 +738,7 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
         filename = os.path.join(folder, f"TEST_N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}_{loss}_{method}.jpg")
         fig.savefig(filename, bbox_inches='tight', dpi=300)
         print(f"Affichage sauvegardé sous: {filename}")
-    # plt.show()
+    plt.show()
     return fig
 
 

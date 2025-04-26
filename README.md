@@ -40,7 +40,7 @@ Here is an example of every function in the main:
 
 For `noise_std`, using a value `closer to 0` will lead to less noise, and a more linearly separable dataset. A value `further from 0` will lead to more noise (which could lead to unexploitable results).
 
-To avoid under- or over-training, keep `N` about `10 times bigger` than `D` minimum. Replace 10 by the number of folds you put in your cross-validation.
+To avoid under- or over-training, keep `N 8 times bigger` than `D` minimum.
 
 The loss `error-counting` cannot be used with the method `gradient`.
 

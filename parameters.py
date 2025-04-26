@@ -646,7 +646,7 @@ def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Yte
         
 
 N = 1000
-D = 100
+D = 125
 bias = -1.0
 noise_std = 0.0
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)

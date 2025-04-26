@@ -23,7 +23,7 @@ In main.py, you can adjust the following hyperparameters when calling the `exec(
 - maxiter: Maximum number of iterations during the learning of the student. Be careful, a high number will make the program longer very fast
 - n_splits: Number of folds in the cross-validation
 - noise_std: Noise to apply (`1.0` introduces a basic noise level, preventing the dataset from being trivially linearly separable)
-- loss: The loss to use (`hinge`, `perceptron` or `square`. `square` isn't usable on the gradient method)
+- loss: The loss to use (`hinge`, `perceptron` or `error-counting`. `error-counting` isn't usable on the gradient method)
 - method: The method to use to train the student (`gradient` or `langevin`)
 
 If the parameter `paralel` at the beginning of the file is set to `True`, the exec() functions will do simultaneously as much as possible `ptrain` values, depending on the number of threads available on your device. If it is set to `False`, it will make values one by one (can be longer for big dataset).
@@ -42,7 +42,7 @@ For `noise_std`, using a value `closer to 0` will lead to less noise, and a more
 
 To avoid under- or over-training, keep `N` about `10 times bigger` than `D` minimum. Replace 10 by the number of folds you put in your cross-validation.
 
-The loss `square` cannot be used with the method `gradient`.
+The loss `error-counting` cannot be used with the method `gradient`.
 
 To introduce noise, I use a method of perturbating the frontier. But I also implemented one randomly flipping the class of some points. This can be used instead by uncommenting it in the function `teacher` in the file `utils.py` (don't forget to comment the other method if you do so, and change the value of `noise_std`, a good value for this method would be `0.1 or 0.05`).
 

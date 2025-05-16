@@ -17,18 +17,18 @@ The implemented perceptron follows a `spherical normalization` scheme. This mean
 In main.py, you can adjust the following hyperparameters when calling the `exec()` function:
 - N: Size of the dataset
 - D: Dimension of each data point
-- bias: Bias to introduce in the teacher (`0` gives 2 `perfectly balanced` classes, `-1` gives a `85-15 imbalance` (85% -1, 15% +1))
+- bias: Bias to introduce in the teacher (`0` gives 2 `perfectly balanced` classes, `-1` gives about `85-15 imbalance` (85% -1, 15% +1))
 - test_size: Size of the test set when splitting in train/test set
 - eta: Learning rate
 - maxiter: Maximum number of iterations during the learning of the student. Be careful, a high number will make the program longer very fast
 - n_splits: Number of folds in the cross-validation
-- noise_std: Noise to apply (`1.0` introduces a basic noise level, preventing the dataset from being trivially linearly separable)
+- noise_std: Noise to apply (`1.0` introduces a basic noise level, preventing the dataset from being trivially linearly separable. `0.0` keeps the data clean without any noise.)
 - loss: The loss to use (`hinge`, `perceptron` or `error-counting`. `error-counting` isn't usable on the gradient method)
 - method: The method to use to train the student (`gradient` or `langevin`)
 
 If the parameter `paralel` at the beginning of the file is set to `True`, the exec() functions will do simultaneously as much as possible `ptrain` values, depending on the number of threads available on your device. If it is set to `False`, it will make values one by one (can be longer for big dataset).
 
-For the `langevin` method, the parameters `T` and `maxiter` can be changed directly in the sub-function `fmethod` in the `langevin-if branch`, in the function `student`, situated in `utils.py` (`T=0.01` and `maxiter=7000` seem to be fit for the kind of data treated here). The parameters passed in the function `apprentissage` will not impact the hyper-parameters of this method.
+For the `langevin` method, the parameters `T` and `maxiter` can be changed directly in the sub-function `fmethod` in the `langevin-if branch`, in the function `student`, situated in `utils.py` (`T=0.005` and `maxiter=15000` seem to be fit for the kind of data treated here). The parameters passed in the function `apprentissage` will not impact the hyper-parameters of this method.
 
 Here is an example of every function in the main:  
 `save_data(N=5000, D=500, bias=-1.0, noise_std=1.0)`: Save a dataset of size 5000x500, with a bias of -1 and a noise of 1  
@@ -46,7 +46,7 @@ The loss `error-counting` cannot be used with the method `gradient`.
 
 To introduce noise, I use a method of perturbating the frontier. But I also implemented one randomly flipping the class of some points. This can be used instead by uncommenting it in the function `teacher` in the file `utils.py` (don't forget to comment the other method if you do so, and change the value of `noise_std`, a good value for this method would be `0.1 or 0.05`).
 
-The program can quickly become long. For instance, using `maxiter=100` and `10 folds` for the cross-validation, the `gradient method` takes approximately `10 minutes` on my machine for a dataset of size `5000x500`. For the same dataset, the `langevin` method will take approximately 12 hours if you keep `maxiter=7000`.
+The program can quickly become long. For instance, using `maxiter=150` and `10 folds` for the cross-validation, the `gradient method` takes approximately `10 minutes` on my machine for a dataset of size `5000x500`. For the same dataset, the `langevin` method will take approximately 6 hours if you keep `maxiter=15000`.
 
 This project uses a `set random_state` to reproduct the results. This parameter can be changed at the top of `utils.py`: `np.random.seed(424242)`
 

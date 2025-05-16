@@ -48,7 +48,7 @@ import numpy as np
 import os
 from typing import Tuple, Callable, List
 from time import time
-maxiter = 4000
+maxiter = 15000
 T = 0.005
 
 # Récupère le jeu de données voulu (chatGPT)
@@ -215,6 +215,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 # E = somme de la loss sur tous les points
                 predictions = X @ w_local + b_local
                 losses = floss(Y, predictions)
+                # return np.mean(losses)  # Parait plus logique mais fait une courbe bizarre avec error-counting
                 # On calcule l'énergie balanced
                 class_indices = ((Y + 1) // 2).astype(int)
                 class_counts = np.bincount(class_indices)
@@ -443,7 +444,7 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     """
     runs = 5 # Modifier si besoin
     n = 10  # Modifier si besoin
-    t_values = np.linspace(0.001, 0.01, n)  # Pour vérifier un intervalle
+    t_values = np.linspace(0.001*1000, 0.01*1000, n)  # Pour vérifier un intervalle
     # t_values = np.r_[np.linspace(0.0001, 0.001, 10), np.linspace(0.002, 0.01, 9)]  # Pour ajouter comparer deux intervalles
     # t_values = np.array([0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1])  # Pour une vision globale
     n = len(t_values)
@@ -646,7 +647,7 @@ def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Yte
         
 
 N = 1000
-D = 125
+D = 100
 bias = -1.0
 noise_std = 0.0
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)

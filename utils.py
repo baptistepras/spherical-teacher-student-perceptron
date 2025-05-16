@@ -76,7 +76,7 @@ import numpy as np
 import os
 from typing import Tuple, Callable, List
 from time import time
-np.random.seed(424242)
+# np.random.seed(424242)
 np.set_printoptions(threshold=6)
 
 
@@ -284,31 +284,34 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             bias: Le biais du perceptron
             floss: La fonction de loss à utiliser
             fgradient: La fonction de gradient à utiliser (on peut l'ignorer pour cette méthode)
+            loss: Fonction de loss à utiliser ('perceptron', 'hinge', 'error-counting')
             eta: Le taux d'apprentissage (on peut l'ignorer pour cette méthode)
             maxiter: Le nombre d'itérations à faire (défini manuellement pour cette méthode)
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
             N, D = X.shape
-            temp = 0.005  # Température à régler
-            maxiter = 4000  # Maxiter à régler
+            Tfinal = 0.005  # Température à régler
+            maxiter = 15000  # Maxiter à régler
             w0 = w.copy()
             amplitude = X.max() - X.min()
             sigma_w = amplitude / 10.0  # On garde 1/10 de l'amplitude des données
-            sigma_b = amplitude / 10.0  
+            sigma_b = amplitude / 10.0  # (entrainé aussi)
 
             # Fonction de calcul de l'énergie E
-            def energy(w_local: np.ndarray, b_local: float, X: np.ndarray, Y: np.ndarray, N: int) -> float:
+            def energy(w_local: np.ndarray, b_local: float, X: np.ndarray, Y: np.ndarray, N: int, loss: str) -> float:
                 """
                 w_local: Vecteur des poids (un ndarray de taille D)
                 b_local: Le biais
                 X: Points de données (un ndarray de taille (N,D))
                 Y: Valeur de vérité des points (un ndarray de taille N)
                 N: Nombre de données
+                loss: Fonction de loss à utiliser ('perceptron', 'hinge', 'error-counting')
                 Return: La valeur de la loss
                 """
                 # E = somme de la loss sur tous les points
                 predictions = X @ w_local + b_local
                 losses = floss(Y, predictions)
+                # return np.mean(losses)  # Parait plus logique mais fait une courbe bizarre avec error-counting
                 # On calcule l'énergie balanced
                 class_indices = ((Y + 1) // 2).astype(int)
                 class_counts = np.bincount(class_indices)
@@ -317,22 +320,21 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 weighted_loss = np.sum(losses * weights)
                 return weighted_loss
 
-
             # Énergie du point initial
-            E_old = energy(w0, bias, X, Y, N)
-            max10 = maxiter/10
+            E_old = energy(w0, bias, X, Y, N, loss)
+            first10 = maxiter/10
 
             for i in range(maxiter):
                 # On choisit un T plus grand au début pour rapidement se rapprocher d'une solution
-                if i < max10:
-                    T = temp*10
+                if i < first10:
+                    T = Tfinal * 10
                 else:
-                    T = temp
+                    T = Tfinal
 
                 # Proposer un nouveau w et b en tirant D gaussiennes indépendantes
                 w_new = w0 + np.random.normal(0, sigma_w/np.sqrt(D), size=D)
                 b_new = bias + np.random.normal(0, sigma_b)
-                E_new = energy(w_new, b_new, X, Y, N)
+                E_new = energy(w_new, b_new, X, Y, N, loss)
                 delta_E = E_new - E_old
 
                 # Probabilité d'acceptation du déplacement
@@ -621,7 +623,7 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
                        f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         else:
-            maxiter = 4000
+            maxiter = 15000
             t = 0.005
             textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
                        f"T={t}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
@@ -710,8 +712,8 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
                        f"Eta={eta}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")
         else:
-            maxiter = 4000
-            t = 0.005
+            maxiter = 15000
+            t = 0.05
             textstr = (f"Hyper-Parameters\nN={N}\nD={D}\nBias={bias:.2f}\nTest Size={test_size:.2f}\n"
                        f"T={t}\nMax Iter={maxiter}\nSplits={n_splits}\nNoise Std={noise_std:.2f}\n"
                        f"Loss={loss}\nMethod={method}\nIntrinsic p0={p0:.2f}")

@@ -1,8 +1,8 @@
 """
 main.py
 
-Hyper-paramètres: n_splits=10  /  eta=0.1  /  maxiter=100  /  noise_std=1.0  /  test_size=0.2
-alpha=8 semble être idéal pour observer correctement les graphes
+Hyper-paramètres: n_splits=10  /  eta=0.1  /  maxiter=150 (gradient)  / T=0.005 / maxiter=15000 (langevin)
+                               /  noise_std=0.0  /  test_size=0.2 / alpha=8
 Pour calculer alpha, on fait: (nombre de points de données) N/D (nombre de dimensions)
 
 Ce module constitue le point d'entrée pour tester et sauvegarder les données générées par le modèle Teacher-Student.

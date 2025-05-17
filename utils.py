@@ -17,34 +17,35 @@ Ce module fournit des fonctions pour les actions suivantes:
 
 Fonctions :
 
-1. generate(N:int=500, D:int=50, show:bool=False) -> np.ndarray
+1. generate(N:int=1000, D:int=125, show:bool=False) -> np.ndarray
    - Génère des données multivariées aléatoires.
 
 2. pca(X:np.ndarray, variance:float=0.95) -> np.ndarray
    - Applique la PCA pour réduire la dimensionnalité des données.
 
-3. teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=1.0, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]
+3. teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=0.0, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]
    - Simule un modèle enseignant (Teacher) pour générer des étiquettes.
 
-4. student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple[np.ndarray, float, Callable, Callable, Callable]
+4. student(X:np.ndarray, loss:str, method:str) -> Tuple[np.ndarray, float, Callable, Callable, Callable]
    - Initialise un modèle étudiant (Student) avec différentes fonctions de perte et méthodes d'apprentissage.
 
 5. split(X:np.ndarray, Y:np.ndarray, test_size:float=0.2) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
    - Divise les données en ensembles d'entraînement et de test.
 
-6. imbalance(X:np.ndarray, Y:np.ndarray, rate:float=0.5) -> Tuple[np.ndarray, np.ndarray]
+6. imbalance(X:np.ndarray, Y:np.ndarray, rate:float=None) -> Tuple[np.ndarray, np.ndarray]
    - Crée un déséquilibre de classe dans les données.
 
 7. apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient: Callable, 
-                  fmethod:Callable, loss:str='hinge', eta:float=0.1, maxiter:int=100) -> Tuple[np.ndarray, float]
+                  fmethod:Callable, loss:str, eta:float=0.1, maxiter:int=150) -> Tuple[np.ndarray, float]
    - Entraîne le modèle étudiant en utilisant une méthode d'optimisation.
 
 8. score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> Tuple[float, float]
    - Évalue la précision du modèle sur un ensemble de données.
 
-9. cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, loss:str='hinge', eta:float=0.1, 
-                  maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float], List[float], List[float]]:
-   - Effectue une cross-validation et renvoie les résultats sur train et test
+9. cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, 
+                  fmethod:Callable, loss:str, eta:float=0.1, maxiter:int=150, test_size:float=0.2, n_splits:int=10, 
+                  ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float], List[float], List[float]]
+   - Effectue une cross-validation et renvoie les résultats sur train et test avec la BA et la ROC AUC.
 
 10. intraseque(Y:np.ndarray) -> float
    - Renvoie le taux de déséquilibre intrasèque de Y.
@@ -54,16 +55,17 @@ Fonctions :
    - Affiche les données en 2D avec les frontières de décision des modèles Teacher et Student.
 
 12. show_perf(scores_train:List[float], scores_test:List[float], scores_roctr:List[float], scores_rocte:List[float]) -> None
-   - Affiche les performances après cross-validation, sur le train et test sets.
+   - Affiche les performances après cross-validation, sur le train et test sets avec la BA et la ROC AUC.
 
 13. show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain:List[float], 
                         p0:float, roctr:List[List[float]], rocte: List[List[float]],
                         save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
+    - Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque) avec la BA et la ROC AUC.
 
 14. show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:List[float], 
                         p0:float, roctr:List[List[float]], rocte: List[List[float]],
                         save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
-   - Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque).
+   - Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque) avec la BA et la ROC AUC.
 
 """
 
@@ -82,7 +84,7 @@ np.set_printoptions(threshold=6)
 
 
 # Génération de données
-def generate(N:int=500, D:int=50, show:bool=False) -> np.ndarray:
+def generate(N:int=1000, D:int=125, show:bool=False) -> np.ndarray:
     """
     N: Nombre de points de données à générer
     D: Dimension des données à générer
@@ -96,7 +98,7 @@ def generate(N:int=500, D:int=50, show:bool=False) -> np.ndarray:
     # Affiche les données (en 2D)
     if show:
         # Trace le nuage de points
-        _, ax = plt.subplots(figsize=(10, 8))
+        _fig, ax = plt.subplots(figsize=(10, 8))
         ax.scatter(X[:, 0], X[:, 1], color='dodgerblue', marker='x', s=20)
         ax.set_title(f"Data 2D Projection")
 
@@ -118,13 +120,13 @@ def pca(X:np.ndarray, variance:float=0.95) -> np.ndarray:
     X: Points de données (un ndarray de taille (N, D))
     variance: La proportion de variance expliquée que l'on veut garder (0.0 -> 1.0) ou le nombre de composants à garder (>= 1)
     """
-    pca = sklearn.decomposition.PCA(n_components=variance)
-    X_pca = pca.fit_transform(X)
+    model = sklearn.decomposition.PCA(n_components=variance)
+    X_pca = model.fit_transform(X)
     return X_pca
 
 
 # Implémentation du teacher
-def teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=1.0, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]:
+def teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=0.0, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
     bias: Le biais choisi (un biais négatif dans notre étude)
@@ -149,7 +151,7 @@ def teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=1.0, show:bool=False)
     # Afficher les données et le Teacher (en 2D)
     if show:
         # Trace le nuage de points avec les classes
-        _, ax = plt.subplots(figsize=(10, 8))
+        _fig, ax = plt.subplots(figsize=(10, 8))
         Xpos, Xneg = X[Y > 0], X[Y < 0]
         ax.scatter(Xneg[:, 0], Xneg[:, 1], color='dodgerblue', marker='x', label='Normal (Y=-1)', s=20)
         ax.scatter(Xpos[:, 0], Xpos[:, 1], color='red', marker='+', label='Anomaly (Y=+1)', s=20)
@@ -173,7 +175,7 @@ def teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=1.0, show:bool=False)
 
 
 # Implémentation du student
-def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple[np.ndarray, float, Callable, Callable, Callable]:
+def student(X:np.ndarray, loss:str, method:str) -> Tuple[np.ndarray, float, Callable, Callable, Callable]:
     """
     X: Points de données (un ndarray de taille (N, D))
     loss: Fonction de loss à utiliser ('perceptron', 'hinge', 'error-counting')
@@ -181,7 +183,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
     Return: Le vecteur w des poids (un ndarray de taille D), le biais, la fonction de loss, la fonction de gradient
              et la méthode pour entraîner le student
     """
-    _, D = X.shape
+    _N, D = X.shape
     w = np.random.normal(loc=0, scale=1/np.sqrt(D), size=D)
     b = np.random.uniform(X.min(), X.max())
 
@@ -204,7 +206,6 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             norm: Valeur de 1/np.sqrt(D)
             Return: Le w et le b pour la mise à jour
             """
-            _, D = X.shape
             w = (eta * norm) * X[misclassified].T @ Y[misclassified]
             b = eta * norm * np.sum(Y[misclassified])
             return w, b
@@ -226,7 +227,6 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             norm: Valeur de 1/np.sqrt(D)
             Return: Le w et le b pour la mise à jour
             """
-            _, D = X.shape
             w = (eta * norm) * X[misclassified].T @ Y[misclassified]
             b = eta * norm * np.sum(Y[misclassified])
             return w, b
@@ -248,7 +248,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
 
     # Méthode d'apprentissage
     if method=='gradient':
-        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, loss:str='hinge', eta:float=0.1, maxiter:int=100,
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, loss:str, eta:float=0.1, maxiter:int=150,
                     ) -> Tuple[np.ndarray, float] :
             """
             X: Points de données (un ndarray de taille (N,D))
@@ -261,7 +261,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             maxiter: Le nombre d'itérations à faire
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
-            _, D = X.shape
+            _N, D = X.shape
             norm = 1.0/np.sqrt(D)
             w0 = w.copy()
             for _ in range(maxiter):
@@ -275,7 +275,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 bias += b_temp
             return w0, bias
     elif method=='langevin':
-        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, loss:str='hinge', eta:float=0.1, maxiter:int=100,
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, loss:str, eta:float=0.1, maxiter:int=150,
                     ) -> Tuple[np.ndarray, float] :
             """
             X: Points de données (un ndarray de taille (N,D))
@@ -396,7 +396,7 @@ def imbalance(X:np.ndarray, Y:np.ndarray, rate:float=None) -> Tuple[np.ndarray, 
 
 
 # Apprentissage du student
-def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, loss:str='hinge', eta:float=0.1, maxiter:int=100,
+def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, loss:str, eta:float=0.1, maxiter:int=150,
                   ) -> Tuple[np.ndarray, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
@@ -438,8 +438,8 @@ def score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> Tuple[float, flo
 
 
 # Cross-validation sur le train et test sets
-def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, loss:str='hinge', eta:float=0.1, 
-                   maxiter:int=100, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float], List[float], List[float]]:
+def cross_validate(X:np.ndarray, Y:np.ndarray, w_init:np.ndarray, b_init:float, floss:Callable, fgradient:Callable, fmethod:Callable, loss:str, eta:float=0.1, 
+                   maxiter:int=150, test_size:float=0.2, n_splits:int=10, ptrain:float=None, ptest:float=None) -> Tuple[List[float], List[float], List[float], List[float]]:
     """
     X: Points de données (un ndarray de taille (N, D))
     Y: Valeur de vérité des points de données (un ndarray de taille N)
@@ -502,7 +502,7 @@ def intraseque(Y:np.ndarray) -> float:
     return N_pos / N
 
 
-# Affiche le jeu de données avec le teacher et le student (partiellement chatGPT)
+# Affiche le jeu de données avec le teacher et le student
 def show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float, w_student:np.ndarray, b_student:float, 
               dim:int=2, ptrain:float=None, ptest:float=None) -> None:
     """
@@ -517,7 +517,7 @@ def show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float,
     ptest: Taux de déséquilibre dans ptest, None si ptest=p0 (taux de déséquilibre intrasèque)
     """
      # Trace le nuage de points avec les classes
-    _, ax = plt.subplots(figsize=(10, 8))
+    _fig, ax = plt.subplots(figsize=(10, 8))
     Xpos, Xneg = X[Y > 0], X[Y < 0]
     ax.scatter(Xneg[:, 0], Xneg[:, 1], color='dodgerblue', marker='x', label='Normal (Y=-1)', s=20)
     ax.scatter(Xpos[:, 0], Xpos[:, 1], color='red', marker='+', label='Anomaly (Y=+1)', s=20)
@@ -544,7 +544,7 @@ def show_data(X:np.ndarray, Y:np.ndarray, w_teacher:np.ndarray, b_teacher:float,
     plt.show()
 
 
-# Affiche les scores après cross-validation (partiellement chatGPT)
+# Affiche les scores après cross-validation
 def show_perf(scores_train:List[float], scores_test:List[float], scores_roctr:List[float], scores_rocte:List[float]) -> None:
     """
     scores_train: Liste des scores du train en cross-validation (Balanced)
@@ -566,7 +566,7 @@ def show_perf(scores_train:List[float], scores_test:List[float], scores_roctr:Li
     plt.show()
 
 
-# Affiche les performances sur train et test selon le ptrain choisi (avec ptest intrasèque) (partiellement chatGPT)
+# Affiche les performances sur train et test selon le ptrain choisi (avec ptest intrasèque)
 def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain:List[float], 
                          p0:float, roctr:List[List[float]], rocte: List[List[float]],
                          save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
@@ -655,7 +655,7 @@ def show_perf_per_ptrain(train:List[List[float]], test:List[List[float]], ptrain
     return fig
 
 
-# Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque) (partiellement chatGPT)
+# Affiche les performances sur train et test selon le ptest choisi (avec ptrain intrasèque)
 def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:List[float], 
                         p0:float, roctr:List[List[float]], rocte: List[List[float]],
                         save:Tuple[int, int, float, float, float, int, int, float, str, str]=None) -> None:
@@ -746,8 +746,8 @@ def show_perf_per_ptest(train:List[List[float]], test:List[List[float]], ptest:L
 
 # Exemple d'utilisation
 """
-N, D, bias = 2000, 2, -1
-eta, maxiter, test_size, n_splits, noise_std = 0.1, 100, 0.2, 10, 0.0
+N, D, bias = 1000, 125, -1.0
+eta, maxiter, test_size, n_splits, noise_std = 0.1, 150, 0.2, 10, 0.0
 X = generate(N=N, D=D, show=False)
 Y, w_teacher, b_teacher = teacher(X=X, bias=bias, noise_std=noise_std, show=True)
 w_init, b_init, floss, fgradient, fmethod = student(X=X, loss='perceptron', method='gradient')

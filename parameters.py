@@ -7,35 +7,56 @@ les fonctions avec les variables situées au début de chaque fonction.
 
 Fonctions (celles prises dan main.py et utils.py peuvent être légèrement modifiées):
 
-1. fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]
-   - Charge et retourne un jeu de données sauvegardé depuis le dossier "data" sous la forme d'un tuple (X, Y, w, b).
+1. generate(N:int=1000, D:int=125, show:bool=False) -> np.ndarray
+   - Génère des données multivariées aléatoires.
 
-2. student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple[np.ndarray, float, Callable, Callable, Callable]
+2. teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=0.0, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]
+   - Simule un modèle enseignant (Teacher) pour générer des étiquettes.
+
+3. save_data(N:int=1000, D:int=125, bias:float=-1, noise_std:float=0.0) -> None
+   - Génère les données de base, simule le modèle Teacher,
+     et sauvegarde les jeux de données dans le dossier "data".
+     Si un dataset avec ces paramètres existe déjà, l'écrase.
+
+4. fetch_data(N:int=1000, D:int=125, bias:float=-1, noise_std:float=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]
+   - Charge et retourne un jeu de données sauvegardé depuis le dossier "data" sous la forme d'un tuple (X, Y, w, b).
+     Si aucun dataset avec ces paramètres n'existe, le créé.
+
+5. delete_data(N:int=1000, D:int=125, bias:float=-1, noise_std:float=0.0, all:bool=False) -> None
+  - Supprime le fichier ciblé, si all=True, tous les fichiers .npz dans data seront supprimés.
+
+6. student(X:np.ndarray, loss:str, method:str) -> Tuple[np.ndarray, float, Callable, Callable, Callable]
    - Initialise un modèle étudiant (Student) avec différentes fonctions de perte et méthodes d'apprentissage.
 
-3. split(X:np.ndarray, Y:np.ndarray, test_size:float=0.2) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+7. split(X:np.ndarray, Y:np.ndarray, test_size:float=0.2) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
    - Divise les données en ensembles d'entraînement et de test.
 
-4. apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient: Callable, 
-                  fmethod:Callable, eta:float=0.1, maxiter:int=100, t:float=0.1) -> Tuple[np.ndarray, float, np.ndarray, float]
-   - Entraîne le modèle étudiant en utilisant une méthode d'optimisation.
+8. apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient: Callable, 
+                  fmethod:Callable, eta:float=0.1, maxiter:int=150, t:float=0.1) -> Tuple[np.ndarray, float, np.ndarray, float]
+   - Entraîne le modèle étudiant en utilisant Langevin.
+   - Renvoie le vecteur w, le biais b, le vecteur de score au fur et à mesure des itérations
+     et le taux d'acceptation (à utiliser pour Langevin)
 
-5. score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float
+9. apprentissage2(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, 
+                    fmethod:Callable, eta:float=0.1, maxiter:int=150) -> Tuple[np.ndarray, float]:
+    - Entraîne le modèle étudiant en utilisant la descente de gradient.
+
+10. score(X:np.ndarray, Y:np.ndarray, w:np.ndarray, b:float) -> float
    - Évalue la précision du modèle sur un ensemble de données.
 
-6. show_different_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
+11. show_different_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
    - Montre le graphe au fur et à mesure des itérations sur différentes valeurs de T pour la dynamique de Langevin
 
-7. find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
+12. find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
    - Cherche graphiquement le T optimal pour la dynamique de Langevin
 
-8. find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
+13. find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
    - Cherche graphiquement le T optimal pour la dynamique de Langevin avec plusieurs runs pour plus de précision
 
-9. find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str, method: str) -> None
+14. find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str, method: str) -> None
    - Cherche graphiquement le meilleur maxiter pour la dynamique de Langevin ou le maxiter optimal pour la descente de gradient
 
-10. find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
+15. find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str) -> None
    - Cherche graphiquement le meilleur eta pour la descente de gradient
 """
 
@@ -48,12 +69,115 @@ import numpy as np
 import os
 from typing import Tuple, Callable, List
 from time import time
-maxiter = 15000
-T = 0.005
 
-# Récupère le jeu de données voulu (chatGPT)
+# Génération de données
+def generate(N:int=1000, D:int=125, show:bool=False) -> np.ndarray:
+    """
+    N: Nombre de points de données à générer
+    D: Dimension des données à générer
+    show: Si True, affiche les données en 2D
+    Return: Les points de données, un ndarray de taille (N,D)
+    """
+    mean = np.zeros(D)
+    cov = np.eye(D)
+    X = np.random.multivariate_normal(mean=mean, cov=cov, size=N)
+    
+    # Affiche les données (en 2D)
+    if show:
+        # Trace le nuage de points
+        _fig, ax = plt.subplots(figsize=(10, 8))
+        ax.scatter(X[:, 0], X[:, 1], color='dodgerblue', marker='x', s=20)
+        ax.set_title(f"Data 2D Projection")
+
+        # Affichage
+        x_min, x_max = X[:, 0].min(), X[:, 0].max()
+        y_min, y_max = X[:, 1].min(), X[:, 1].max()
+        ax.set_xlim([x_min-0.5, x_max+0.5])
+        ax.set_ylim([y_min-0.5, y_max+0.5])
+        ax.set_xticks([])
+        ax.set_yticks([])
+        plt.show()
+
+    return X
+
+
+# Implémentation du teacher
+def teacher(X:np.ndarray, bias:float=-1.0, noise_std:float=0.0, show:bool=False) -> Tuple[np.ndarray, np.ndarray, float]:
+    """
+    X: Points de données (un ndarray de taille (N, D))
+    bias: Le biais choisi (un biais négatif dans notre étude)
+    noise_std: L'écart-type du bruit à mettre (si l'on utilise un bruit par perturbation de la frontière)
+    show: Si True, affiche les données en 2D et le Teacher
+    Return: La valeur de vérité des points (un ndarray de taille N), 
+            avec le vecteur de poids du teacher (un ndarray de taille D) et le biais du teacher
+    """
+    N, D = X.shape
+    w = np.random.normal(loc=0, scale=1/np.sqrt(D), size=D)
+
+    # Prédire la classe de chaque point en ajoutant un bruit (pour éviter que le dataset soit linéairement séparable)
+    noise = np.random.normal(loc=0.0, scale=noise_std, size=N)  # Choisir une valeur comme 1.O ou 2.0
+    Y = np.sign((X @ w) + bias + noise)  # Pour générer du bruit par perturbation de la frontière
+
+    """
+    Y = np.sign((X @ w) + bias)
+    flip_mask = np.random.rand(Y.shape[0]) < noise_std  # Choisir une valeur comme 0.05 ou 0.1
+    Y[flip_mask] *= -1 # Pour générer du bruit par modification d'étiquette
+    """
+
+    # Afficher les données et le Teacher (en 2D)
+    if show:
+        # Trace le nuage de points avec les classes
+        _fig, ax = plt.subplots(figsize=(10, 8))
+        Xpos, Xneg = X[Y > 0], X[Y < 0]
+        ax.scatter(Xneg[:, 0], Xneg[:, 1], color='dodgerblue', marker='x', label='Normal (Y=-1)', s=20)
+        ax.scatter(Xpos[:, 0], Xpos[:, 1], color='red', marker='+', label='Anomaly (Y=+1)', s=20)
+
+        # Trace la courbe du teacher
+        x_min, x_max = X[:, 0].min(), X[:, 0].max()
+        y_min, y_max = X[:, 1].min(), X[:, 1].max()
+        xx = np.linspace(x_min, x_max, 200)
+        yy = -(bias + w[0]*xx)/(w[1]+1e-10) 
+        ax.plot(xx, yy, '--', color='black', label='Teacher boundary')
+
+        # Affichage
+        ax.set_xlim([x_min-0.5, x_max+0.5])
+        ax.set_ylim([y_min-0.5, y_max+0.5])
+        ax.set_title("Spherical Teacher–Student in 2D")
+        ax.legend()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        plt.show()
+    return Y, w, bias
+
+
+# Sauvegarde un data set dans le dossier data
+# Écrase des données déjà existantes pour les mêmes paramètres
+def save_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0) -> None:
+    """
+    N: Nombre de points de données à générer
+    D: Dimension des données à générer
+    bias : Biais à utiliser pour le teacher
+    noise_std: Le bruit à appliquer
+    """
+    # Génération des données de base
+    X = generate(N=N, D=D)
+    Y_base, w_base, b_base = teacher(X=X, bias=bias, noise_std=noise_std, show=False)
+
+    # Crée le dossier de destination
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    folder = os.path.join(base_dir, "data")
+    os.makedirs(folder, exist_ok=True)
+    filename = os.path.join(folder, f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.npz")
+
+    # Sauvegarde du jeu de données avec son teacher
+    np.savez(filename, X=X, Y=Y_base, w=w_base, b=b_base)
+
+    print("Les données ont été sauvegardées dans le dossier 'data'.")
+
+
+# Récupère le jeu de données voulu
 # Si les données n'existe pas, les créé
-def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+def fetch_data(N:int=1000, D:int=125, bias:float=-1, noise_std:float=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     """
     N: Nombre de points de données du dataset à fetch
     D: Dimension des données du dataset à fetch
@@ -64,7 +188,7 @@ def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple
     base_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(base_dir, "data", f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.npz")
     if not os.path.exists(file_path):
-        raise ValueError("Ce dataset n'existe pas")
+        save_data(N=N, D=D, bias=bias, noise_std=noise_std)
     loaded = np.load(file_path)
 
     # On récupère le dictionnaire puis on extrait chacun des tableaux
@@ -72,8 +196,45 @@ def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple
     return data_dict['X'], data_dict['Y'], data_dict['w'], float(data_dict['b'])
 
 
+# Efface un jeu de données
+def delete_data(N:int=1000, D:int=125, bias:float=-1, noise_std:float=0.0, all:bool=False) -> None:
+    """
+    N: Nombre de points de données du dataset à fetch
+    D: Dimension des données du dataset à fetch
+    bias: Biais du teacher à fetch
+    noise_std: Le bruit ajouté au teacher
+    all: Si True, supprime tous les datasets (le randomstate initialisé dans le fichier permet de les retrouver)
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    folder = os.path.join(base_dir, "data")
+
+    # Supprime tous les datasets
+    if all:
+        if os.path.exists(folder):
+            files_removed = False
+            for filename in os.listdir(folder):
+                file_path = os.path.join(folder, filename)
+                if os.path.isfile(file_path) and file_path.endswith(".npz"):
+                    os.remove(file_path)
+                    print(f"Le fichier '{file_path}' a été supprimé.")
+                    files_removed = True
+            if not files_removed:
+                print(f"Aucun fichier '.npz' trouvé dans le dossier '{folder}'.")
+        else:
+            print(f"Le dossier '{folder}' n'existe pas.")
+
+    # Supprime le fichier cible
+    else:
+        file_path = os.path.join(folder, f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.npz")
+        if os.path.exists(file_path):
+            os.remove(file_path)
+            print(f"Le fichier '{file_path}' a été supprimé.")
+        else:
+            print(f"Aucun fichier trouvé pour les paramètres N={N}, D={D}, bias={bias}.")
+
+
 # Implémentation du student (légèrement différente que la version dans utils.py)
-def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple[np.ndarray, float, Callable, Callable, Callable]:
+def student(X:np.ndarray, loss:str, method:str) -> Tuple[np.ndarray, float, Callable, Callable, Callable]:
     """
     X: Points de données (un ndarray de taille (N, D))
     loss: Fonction de loss à utiliser ('perceptron', loss, 'error-counting')
@@ -81,7 +242,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
     Return: Le vecteur w des poids (un ndarray de taille D), le biais, la fonction de loss, la fonction de gradient
              et la méthode pour entraîner le student
     """
-    _, D = X.shape
+    _N, D = X.shape
     w = np.random.normal(loc=0, scale=1/np.sqrt(D), size=D)
     b = np.random.uniform(X.min(), X.max())
 
@@ -104,11 +265,10 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             norm: Valeur de 1/np.sqrt(D)
             Return: Le w et le b pour la mise à jour
             """
-            _, D = X.shape
             w = (eta * norm) * X[misclassified].T @ Y[misclassified]
             b = eta * norm * np.sum(Y[misclassified])
             return w, b
-    elif loss==loss:
+    elif loss=='hinge':
         def floss(Y: np.ndarray, pred: np.ndarray) -> np.ndarray:
             """
             Y: Valeur de vérité du point
@@ -126,7 +286,6 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             norm: Valeur de 1/np.sqrt(D)
             Return: Le w et le b pour la mise à jour
             """
-            _, D = X.shape
             w = (eta * norm) * X[misclassified].T @ Y[misclassified]
             b = eta * norm * np.sum(Y[misclassified])
             return w, b
@@ -148,7 +307,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
 
     # Méthode d'apprentissage
     if method=='gradient':
-        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100, t:float=1,
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=150, t:float=1,
                     ) -> Tuple[np.ndarray, float] :
             """
             X: Points de données (un ndarray de taille (N,D))
@@ -161,7 +320,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             maxiter: Le nombre d'itérations à faire
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
-            _, D = X.shape
+            _N, D = X.shape
             norm = 1.0/np.sqrt(D)
             w0 = w.copy()
             vec_score = []
@@ -180,7 +339,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
                 vec_score.append(score(X, Y, w0, bias))
             return w0, bias, vec_score, somme
     elif method=='langevin':
-        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=100, t=0.3
+        def fmethod(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, eta:float=0.1, maxiter:int=150, t=0.3
                     ) -> Tuple[np.ndarray, float] :
             """
             X: Points de données (un ndarray de taille (N,D))
@@ -194,7 +353,6 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
             Return: Le vecteur w des poids (un ndarray de taille D) du student et son biais, entrainés
             """
             N, D = X.shape
-            maxiter = maxiter  # maxiter à régler
             w0 = w.copy()
             amplitude = X.max() - X.min()
             sigma_w = amplitude / 10.0  # On garde 1/10 de l'amplitude des données
@@ -258,7 +416,7 @@ def student(X:np.ndarray, loss:str='perceptron', method:str='gradient') -> Tuple
 
             # Afficher l'évolution à travers le temps
             """
-            _, ax = plt.subplots(figsize=(10, 8))
+            _fig, ax = plt.subplots(figsize=(10, 8))
             ax.plot(np.linspace(0, maxiter, maxiter+1), vec_score, '-', color='red', label='Score Evolution')
             ax.set_xlabel("Iteration")
             ax.set_ylabel("Score")
@@ -285,8 +443,8 @@ def split(X:np.ndarray, Y:np.ndarray, test_size:float=0.2) -> Tuple[np.ndarray, 
     return X_train, X_test, Y_train, Y_test
 
 
-# Apprentissage du student (légèrement différente que la version dans utils.py)
-def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=100,
+# Apprentissage du student pour Langevin
+def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=150,
                   t:float=0.1) -> Tuple[np.ndarray, float, np.ndarray, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
@@ -307,8 +465,8 @@ def apprentissage(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Ca
     return w_final, b_final, vec, acceptance
 
 
-# Apprentissage du student
-def apprentissage2(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=100,
+# Apprentissage du student pour la descente de gradient
+def apprentissage2(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:Callable, fgradient:Callable, fmethod:Callable, eta:float=0.1, maxiter:int=150
                   ) -> Tuple[np.ndarray, float]:
     """
     X: Points de données (un ndarray de taille (N, D))
@@ -323,7 +481,7 @@ def apprentissage2(X:np.ndarray, Y:np.ndarray, w:np.ndarray, bias:float, floss:C
     Return: Le vecteur des poids du student (un ndarray de taille D) et son biais entrainés
     """
     w0 = w.copy()
-    w_final, b_final, _, _= fmethod(X=X, Y=Y, w=w0, bias=bias, floss=floss, fgradient=fgradient, eta=eta, maxiter=maxiter)
+    w_final, b_final, _vec, _acceptance = fmethod(X=X, Y=Y, w=w0, bias=bias, floss=floss, fgradient=fgradient, eta=eta, maxiter=maxiter)
     return w_final, b_final
 
 
@@ -386,7 +544,7 @@ def find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest
     """
     n = 10  # Modifier si besoin
     t_values = np.linspace(0.005, 0.05, n)   # Modifier si besoin
-    _, ax = plt.subplots(figsize=(10, 6))
+    _fig, ax = plt.subplots(figsize=(10, 6))
     w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method='langevin')
     train_scores = []
     test_scores = []
@@ -394,7 +552,7 @@ def find_best_T(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest
     start = time()
 
     for i, t in enumerate(t_values):
-        w_student, b_student, _, acceptance = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
+        w_student, b_student, _vec, acceptance = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
                                              fmethod=fmethod, eta=0.1, maxiter=maxiter, t=t)
         train_scores.append(score(Xtrain, Ytrain, w_student, b_student))
         test_scores.append(score(Xtest, Ytest, w_student, b_student))
@@ -464,7 +622,7 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
 
         # Exécution d'une run en particulier
         for i, t in enumerate(t_values):
-            w_student, b_student, _, acceptance = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
+            w_student, b_student, _vec, acceptance = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
                                                                   fmethod=fmethod, eta=0.1, maxiter=maxiter, t=t)
             
             train_scores.append(score(Xtrain, Ytrain, w_student, b_student))
@@ -515,7 +673,7 @@ def find_best_T_multiple_runs(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.
     plt.show()
 
 
-# Cherche graphiquement le maxiter optimal (pour langevin)
+# Cherche graphiquement le maxiter optimal
 def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Ytest: np.ndarray, loss: str, method: str) -> None:
     """
     Xtrain: train set
@@ -526,7 +684,7 @@ def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray,
     method: La méthode à utiliser
     """
     if method == 'gradient':
-        runs = 1000  # Beaucou de runs nécessaires
+        runs = 1000  # Beaucoup de runs nécessaires
         iter = 500  # Modifier si besoin
     else:
         runs = 5  # Peu de runs nécessaires
@@ -539,7 +697,7 @@ def find_best_maxiter(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray,
     # Apprentissage
     for i in range(runs):
         w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method=method)
-        _, _, vec, somme = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
+        _w, _b, vec, somme = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
                                                                   fmethod=fmethod, eta=0.1, maxiter=iter, t=T)
 
         # Affichage des courbes
@@ -603,7 +761,7 @@ def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Yte
         # Exécution d'une run en particulier
         for i, eta in enumerate(eta_values):
             w_student, b_student = apprentissage2(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
-                                                                  fmethod=fmethod, eta=eta, maxiter=500)
+                                                                  fmethod=fmethod, eta=eta, maxiter=500)  # Changer maxiter ici si nécessaire
             
             train_scores.append(score(Xtrain, Ytrain, w_student, b_student))
             test_scores.append(score(Xtest, Ytest, w_student, b_student))
@@ -646,17 +804,19 @@ def find_best_eta(Xtrain: np.ndarray, Xtest: np.ndarray, Ytrain: np.ndarray, Yte
     plt.show()
         
 
+maxiter = 15000  # Fixe maxiter pour Langevin quand on entraine T
+T = 0.005  # Fixe T pour Langevin quand on entraine maxiter
 N = 1000
-D = 100
+D = 125
 bias = -1.0
 noise_std = 0.0
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)
 Xtrain, Xtest, Ytrain, Ytest = split(X, Y, 0.2)
 # w_init, b_init, floss, fgradient, fmethod = student(X=Xtrain, loss=loss, method='langevin')
-# w_student, b_student, _, _ = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
+# w_student, b_student, _vec, _acceptance = apprentissage(X=Xtrain, Y=Ytrain, w=w_init, bias=b_init, floss=floss, fgradient=fgradient, 
 #                                                                  fmethod=fmethod, eta=0.1, maxiter=maxiter, t=T)
 # show_different_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')
 # find_best_T(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')
-find_best_T_multiple_runs(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')
+# find_best_T_multiple_runs(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')
 # find_best_maxiter(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge', method='langevin')
 # find_best_eta(Xtrain=Xtrain, Xtest=Xtest, Ytrain=Ytrain, Ytest=Ytest, loss='hinge')

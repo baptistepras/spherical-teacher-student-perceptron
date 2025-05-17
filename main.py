@@ -2,7 +2,7 @@
 main.py
 
 Hyper-paramètres: n_splits=10  /  eta=0.1  /  maxiter=150 (gradient)  / T=0.005 / maxiter=15000 (langevin)
-                               /  noise_std=0.0  /  test_size=0.2 / alpha=8
+                  noise_std=0.0  /  test_size=0.2 / alpha=8
 Pour calculer alpha, on fait: (nombre de points de données) N/D (nombre de dimensions)
 
 Ce module constitue le point d'entrée pour tester et sauvegarder les données générées par le modèle Teacher-Student.
@@ -11,41 +11,45 @@ Il permet de :
 - Simuler un modèle enseignant (Teacher) afin de générer des étiquettes.
 - Sauvegarder les jeux de données dans le dossier "data".
   Les noms incluent les paramètres N, D et le biais pour une identification aisée.
+- Supprimer des datasets
 - Charger (fetch) un jeu de données sauvegardé et afficher son contenu.
 - Éxecuter sur un dataset donné et avec ses hyper-paramètres choisis, une cross-validation
   sur plusieurs valeurs possible de ptrain.
-- Supprimer des datasets
 
 Fonctions :
 
-1. save_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1) -> None
+1. save_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0) -> None
    - Génère les données de base, simule le modèle Teacher,
      et sauvegarde les jeux de données dans le dossier "data".
      Si un dataset avec ces paramètres existe déjà, l'écrase.
 
-2. fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]
+2. fetch_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]
    - Charge et retourne un jeu de données sauvegardé depuis le dossier "data" sous la forme d'un tuple (X, Y, w, b).
      Si aucun dataset avec ces paramètres n'existe, le créé.
 
-3. delete_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=-1, all:bool=False) -> None
+3. delete_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0, all:bool=False) -> None
   - Supprime le fichier ciblé, si all=True, tous les fichiers .npz dans data seront supprimés.
 
-4. exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
-         test_size:float=0.2, ptrain:float=None, ptest:float=None, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1) -> None
+4. exec(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
+         test_size:float=0.2, ptrain:float=None, ptest:float=None, eta:float=0.1, maxiter:int=150, n_splits:int=10, bias:float=-1.0) -> None
    - Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné.
 
-5. exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
-         test_size:float=0.2, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1, noise_std:float=1.0) -> None
-    - Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné.
+5. exec2(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
+         test_size:float=0.2, eta:float=0.1, maxiter:int=150, n_splits:int=10, bias:float=-1.0, noise_std:float=0.0) -> None
+    - Effectue une cross-validation sur tous les ptest possibles pour un dataset donné.
+
+6. exec3(loss:str, method:str,  test_size:float=0.2, eta:float=0.1, maxiter:int=150, 
+          n_splits:int=10, bias:float=-1.0, noise_std:float=0.0) -> None:
+    - Effectue une cross-validation sur toutes les dimensions données
 """
 from joblib import Parallel, delayed, cpu_count
 from utils import *
-paralel = False  # Set to True to use as many threads as possible to simultaneously execute several ptrain values
+parallel = False  # Set to True to use as many threads as possible to simultaneously execute several ptrain values
 
 
-# Sauvegarde un data set dans le dossier data (chatGPT)
+# Sauvegarde un data set dans le dossier data
 # Écrase des données déjà existantes pour les mêmes paramètres
-def save_data(N:int=500, D:int=50, bias:float=-1.0, noise_std:float=1.0) -> None:
+def save_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0) -> None:
     """
     N: Nombre de points de données à générer
     D: Dimension des données à générer
@@ -68,9 +72,9 @@ def save_data(N:int=500, D:int=50, bias:float=-1.0, noise_std:float=1.0) -> None
     print("Les données ont été sauvegardées dans le dossier 'data'.")
 
 
-# Récupère le jeu de données voulu (chatGPT)
+# Récupère le jeu de données voulu
 # Si les données n'existe pas, les créé
-def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
+def fetch_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0) -> Tuple[np.ndarray, np.ndarray, np.ndarray, float]:
     """
     N: Nombre de points de données du dataset à fetch
     D: Dimension des données du dataset à fetch
@@ -89,8 +93,8 @@ def fetch_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0) -> Tuple
     return data_dict['X'], data_dict['Y'], data_dict['w'], float(data_dict['b'])
 
 
-# Efface un jeu de données (chatGPT)
-def delete_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0, all:bool=False) -> None:
+# Efface un jeu de données
+def delete_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0, all:bool=False) -> None:
     """
     N: Nombre de points de données du dataset à fetch
     D: Dimension des données du dataset à fetch
@@ -127,8 +131,8 @@ def delete_data(N:int=500, D:int=50, bias:float=-1, noise_std:float=1.0, all:boo
 
 
 # Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné
-def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
-         test_size:float=0.2, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1, noise_std:float=1.0) -> None:
+def exec(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
+         test_size:float=0.2, eta:float=0.1, maxiter:int=150, n_splits:int=10, bias:float=-1.0, noise_std:float=0.0) -> None:
     """
     X: Points de données (un ndarray de taille (N,D))
     Y: Valeur de vérité des points (un ndarray de taille N)
@@ -144,17 +148,17 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
 
     N, D = X.shape
     w_init, b_init, floss, fgradient, fmethod = student(X=X, loss=loss, method=method)
-    train = []
-    test = []
-    roctr = []
-    rocte = []
+    train = []  # Balanced Accuracy train scores
+    test = []  # Balanced Accuracy test scores
+    roctr = []  # ROC AUC train scores
+    rocte = []  # ROC AUC test scores
     ptrain = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
     # ptrain = np.linspace(0, 1, 21)[1:-1]  # 19 valeurs entre 0 et 1 (exclus)
     p0 = intraseque(Y=Y)
     start = time()
 
     # Cross-validation
-    if paralel: 
+    if parallel: 
       # Fonction qui exécute la cross-validation pour une valeur donnée de ptrain
       def run_cv_for_p(p):
         return p, cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient,
@@ -191,8 +195,8 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient
                          save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
     
 # Effectue une cross-validation sur tous les ptest possibles pour un dataset donné
-def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradient', 
-         test_size:float=0.2, eta:float=0.1, maxiter:int=1000, n_splits:int=10, bias:float=-1, noise_std:float=1.0) -> None:
+def exec2(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
+         test_size:float=0.2, eta:float=0.1, maxiter:int=150, n_splits:int=10, bias:float=-1.0, noise_std:float=0.0) -> None:
     """
     X: Points de données (un ndarray de taille (N,D))
     Y: Valeur de vérité des points (un ndarray de taille N)
@@ -207,17 +211,17 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
     """
     N, D = X.shape
     w_init, b_init, floss, fgradient, fmethod = student(X=X, loss=loss, method=method)
-    train = []
-    test = []
-    roctr = []
-    rocte = []
+    train = []  # Balanced Accuracy train scores
+    test = []  # Balanced Accuracy test scores
+    roctr = []  # ROC AUC train scores
+    rocte = []  # ROC AUC test scores
     ptest = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
     # ptest = np.linspace(0, 1, 21)[1:-1]  # 19 valeurs entre 0 et 1 (exclus)
     p0 = intraseque(Y=Y)
     start = time()
 
     # Cross-validation
-    if paralel: 
+    if parallel: 
       # Fonction qui exécute la cross-validation pour une valeur donnée de ptrain
       def run_cv_for_p(p):
         return p, cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient,
@@ -255,8 +259,8 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str='perceptron', method:str='gradien
     
 
 # Effectue une cross-validation sur toutes les dimensions données
-def exec3(loss:str='perceptron', method:str='gradient',  test_size:float=0.2, eta:float=0.1, maxiter:int=1000, 
-          n_splits:int=10, bias:float=-1, noise_std:float=1.0) -> None:
+def exec3(loss:str, method:str,  test_size:float=0.2, eta:float=0.1, maxiter:int=150, 
+          n_splits:int=10, bias:float=-1.0, noise_std:float=0.0) -> None:
     """
     loss: Fonction de loss à utiliser ('perceptron', 'hinge', 'error-counting')
     method: Méthode d'entraînement à utiliser ('gradient', 'langevin')
@@ -269,21 +273,20 @@ def exec3(loss:str='perceptron', method:str='gradient',  test_size:float=0.2, et
     """
     N = 10000
     dimensions = np.linspace(1000, 10000, 10)
-    for i, D in enumerate(dimensions):
-      D = int(D)
-      X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)
+    for i, int(D) in enumerate(dimensions):
+      X, Y, _w, _b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)
       w_init, b_init, floss, fgradient, fmethod = student(X=X, loss=loss, method=method)
-      train = []
-      test = []
-      roctr = []
-      rocte = []
+      train = []  # Balanced Accuracy train scores
+      test = []  # Balanced Accuracy test scores
+      roctr = []  # ROC AUC train scores
+      rocte = []  # ROC AUC test scores
       ptrain = np.linspace(0, 1, 44)[1:-1]  # 42 valeurs entre 0 et 1 (exclus)
-      # ptest = np.linspace(0, 1, 21)[1:-1]  # 19 valeurs entre 0 et 1 (exclus)
+      # ptrain = np.linspace(0, 1, 21)[1:-1]  # 19 valeurs entre 0 et 1 (exclus)
       p0 = intraseque(Y=Y)
       start = time()
 
       # Cross-validation
-      if paralel: 
+      if parallel: 
         # Fonction qui exécute la cross-validation pour une valeur donnée de ptrain
         def run_cv_for_p(p):
           return p, cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient,
@@ -328,7 +331,7 @@ noise_std = 0.0
 # save_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
 # delete_data(N=N, D=D, bias=bias, noise_std=noise_std, all=True)
-exec(X=X, Y=Y, loss='hinge', method='langevin', test_size=0.2, eta=0.8, maxiter=200, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
-# exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.8, maxiter=200, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest
-# exec3(loss='hinge', method='gradient', test_size=0.2, eta=0.8, maxiter=200, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier la dimension
+exec(X=X, Y=Y, loss='hinge', method='langevin', test_size=0.2, eta=0.8, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
+# exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.8, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest
+# exec3(loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier la dimension
 

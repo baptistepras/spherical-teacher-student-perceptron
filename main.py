@@ -30,15 +30,24 @@ Fonctions :
 3. delete_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0, all:bool=False) -> None
   - Supprime le fichier ciblé, si all=True, tous les fichiers .npz dans data seront supprimés.
 
-4. exec(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
+4. save_exec_results(ptrain: np.ndarray, train_scores: List[float], test_scores: List[float], 
+                      roctr_scores: List[float], rocte_scores: List[float], N:int=1000, 
+                      D:int=125, bias:float=-1.0, noise_std:float=0.0) -> None
+  - Sauvegarde les résultats dans un fichier json
+
+5. load_exec_results(N:int=1000, D:int=125, bias:float=-1.0, 
+                      noise_std:float=0.0) -> Tuple[np.ndarray, List[float], List[float], List[float], List[float]]
+  - Charge les résultats sauvegardés et reconstruit les tableaux de scores
+
+6. exec(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
          test_size:float=0.2, ptrain:float=None, ptest:float=None, eta:float=0.1, maxiter:int=150, n_splits:int=10, bias:float=-1.0) -> None
    - Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné.
 
-5. exec2(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
+7. exec2(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
          test_size:float=0.2, eta:float=0.1, maxiter:int=150, n_splits:int=10, bias:float=-1.0, noise_std:float=0.0) -> None
     - Effectue une cross-validation sur tous les ptest possibles pour un dataset donné.
 
-6. exec3(loss:str, method:str,  test_size:float=0.2, eta:float=0.1, maxiter:int=150, 
+8. exec3(loss:str, method:str,  test_size:float=0.2, eta:float=0.1, maxiter:int=150, 
           n_splits:int=10, bias:float=-1.0, noise_std:float=0.0) -> None:
     - Effectue une cross-validation sur toutes les dimensions données
 """
@@ -68,7 +77,6 @@ def save_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0) -> No
 
     # Sauvegarde du jeu de données avec son teacher
     np.savez(filename, X=X, Y=Y_base, w=w_base, b=b_base)
-
     print("Les données ont été sauvegardées dans le dossier 'data'.")
 
 
@@ -129,6 +137,57 @@ def delete_data(N:int=1000, D:int=125, bias:float=-1.0, noise_std:float=0.0, all
         else:
             print(f"Aucun fichier trouvé pour les paramètres N={N}, D={D}, bias={bias}.")
 
+
+# Sauvegarde les résultats dans un fichier json
+def save_exec_results(ptrain: np.ndarray, train_scores: List[float], test_scores: List[float], 
+                      roctr_scores: List[float], rocte_scores: List[float], N:int=1000, 
+                      D:int=125, bias:float=-1.0, noise_std:float=0.0) -> None:
+    """
+    ptrain: Valeurs de ptrain
+    train_scores: Valeurs de la Balanced Accuracy sur l'ensemble d'entraînement
+    test_scores: Valeurs de la Balanced Accuracy sur l'ensemble de test
+    roctr_scores: Valeurs de la ROC AUC sur l'ensemble d'entraînement
+    rocte_scores: Valeurs de la ROC AUC sur l'ensemble de test
+    N: Nombre de points de données du dataset à fetch
+    D: Dimension des données du dataset à fetch
+    bias: Biais du teacher à fetch
+    noise_std: Le bruit ajouté au teacher
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    folder = os.path.join(base_dir, "results")
+    os.makedirs(folder, exist_ok=True)
+    filename = os.path.join(folder, f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.json")
+    data = {'ptrain': ptrain.tolist(), 'train_balanced_accuracy': train_scores, 'test_balanced_accuracy': test_scores,
+            'train_roc_auc': roctr_scores, 'test_roc_auc': rocte_scores,}
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=2)
+    print("Les données ont été sauvegardées dans le dossier 'results'.")
+
+
+# Charge les résultats sauvegardés et reconstruit les tableaux de scores
+def load_exec_results(N:int=1000, D:int=125, bias:float=-1.0, 
+                      noise_std:float=0.0) -> Tuple[np.ndarray, List[float], List[float], List[float], List[float]]:
+    """
+    N: Nombre de points de données du dataset à fetch
+    D: Dimension des données du dataset à fetch
+    bias: Biais du teacher à fetch
+    noise_std: Le bruit ajouté au teacher
+    Returns: Un tuple contenant:
+      - ptrain: np.ndarray des valeurs de ptrain
+      - train_balanced_accuracy: np.ndarray des aleurs de la Balanced Accuracy sur l'ensemble d'entraînement
+      - test_balanced_accuracy: np.ndarray des valeurs de la Balanced Accuracy sur l'ensemble de test
+      - train_roc_auc: np.ndarray des valeurs de la ROC AUC sur l'ensemble d'entraînement
+      - test_roc_auc: np.ndarray des valeurs de la ROC AUC sur l'ensemble de test
+    """
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(base_dir, "results", f"N{N}_D{D}_b{bias:.1f}_n{noise_std:.1f}.json")
+    if not os.path.exists(file_path):
+      raise ValueError("Aucun fichier ne correspond aux paramètres donnés")
+    with open(file_path, 'r') as f:
+      data = json.load(f)
+    return (np.array(data['ptrain']), data['train_balanced_accuracy'], data['test_balanced_accuracy'], 
+            data['train_roc_auc'], data['test_roc_auc'])
+    
 
 # Effectue une cross-validation sur tous les ptrain possibles pour un dataset donné
 def exec(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
@@ -194,6 +253,11 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str, method:str,
     show_perf_per_ptrain(train=train, test=test, ptrain=ptrain, p0=p0, roctr=roctr, rocte=rocte,
                          save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
     
+    # Sauvegarde les résultats
+    save_exec_results(N=N, D=D, bias=bias, noise_std=noise_std, ptrain=ptrain, train_scores=train,
+                      test_scores=test, roctr_scores=roctr, rocte_scores=rocte)
+
+    
 # Effectue une cross-validation sur tous les ptest possibles pour un dataset donné
 def exec2(X:np.ndarray, Y:np.ndarray, loss:str, method:str, 
          test_size:float=0.2, eta:float=0.1, maxiter:int=150, n_splits:int=10, bias:float=-1.0, noise_std:float=0.0) -> None:
@@ -257,6 +321,10 @@ def exec2(X:np.ndarray, Y:np.ndarray, loss:str, method:str,
     show_perf_per_ptest(train=train, test=test, ptest=ptest, p0=p0, roctr=roctr, rocte=rocte,
                          save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
     
+    # Sauvegarde les résultats
+    save_exec_results(N=N, D=D, bias=bias, noise_std=noise_std, ptrain=ptest, train_scores=train,
+                      test_scores=test, roctr_scores=roctr, rocte_scores=rocte)
+    
 
 # Effectue une cross-validation sur toutes les dimensions données
 def exec3(loss:str, method:str,  test_size:float=0.2, eta:float=0.1, maxiter:int=150, 
@@ -273,7 +341,8 @@ def exec3(loss:str, method:str,  test_size:float=0.2, eta:float=0.1, maxiter:int
     """
     N = 10000
     dimensions = np.linspace(1000, 10000, 10)
-    for i, int(D) in enumerate(dimensions):
+    for i, D in enumerate(dimensions):
+      D = int(D)
       X, Y, _w, _b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)
       w_init, b_init, floss, fgradient, fmethod = student(X=X, loss=loss, method=method)
       train = []  # Balanced Accuracy train scores
@@ -321,17 +390,21 @@ def exec3(loss:str, method:str,  test_size:float=0.2, eta:float=0.1, maxiter:int
       print(f"Temps final: {(time()-start):.0f} secondes")
       show_perf_per_ptrain(train=train, test=test, ptrain=ptrain, p0=p0, roctr=roctr, rocte=rocte,
                           save=(N, D, bias, test_size, eta, maxiter, n_splits, noise_std, loss, method))
+      
+      # Sauvegarde les résultats
+      save_exec_results(N=N, D=D, bias=bias, noise_std=noise_std, ptrain=ptrain, train_scores=train,
+                      test_scores=test, roctr_scores=roctr, rocte_scores=rocte)
 
 
 # Exemple d'utilisation
-N = 10000
-D = 1250
+N = 1000
+D = 125
 bias = -1.0
 noise_std = 0.0
 # save_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Permet d'écraser un ancien dataset avec les mêmes paramètres
 X, Y, w, b = fetch_data(N=N, D=D, bias=bias, noise_std=noise_std)  # Suffisant pour créer ou fetch un dataset avec les paramètres donnés
 # delete_data(N=N, D=D, bias=bias, noise_std=noise_std, all=True)
-exec(X=X, Y=Y, loss='hinge', method='langevin', test_size=0.2, eta=0.8, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
+exec(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.8, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptrain
 # exec2(X=X, Y=Y, loss='hinge', method='gradient', test_size=0.2, eta=0.8, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier ptest
 # exec3(loss='hinge', method='gradient', test_size=0.2, eta=0.1, maxiter=150, n_splits=10, bias=b, noise_std=noise_std)  # Fait varier la dimension
-
+# ptrain, train_BA, test_BA, train_ROC, test_ROC = load_exec_results(N=N, D=D, bias=bias, noise_std=noise_std)

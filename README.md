@@ -14,6 +14,18 @@ The implemented perceptron follows a `spherical normalization` scheme. This mean
 
 # How to use it ?
 
+## Environment
+
+You need a local environment with the following libraries:
+
+`pip install pandas`
+
+`pip install numpy`
+
+`pip install scikit-learn`
+
+`pip install matplotlib`
+
 ## main.py
 
 You can adjust the following hyperparameters when calling the `exec()` function:

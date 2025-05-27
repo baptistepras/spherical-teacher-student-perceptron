@@ -221,7 +221,7 @@ def exec(X:np.ndarray, Y:np.ndarray, loss:str, method:str,
       # Fonction qui exécute la cross-validation pour une valeur donnée de ptrain
       def run_cv_for_p(p):
         return p, cross_validate(X=X, Y=Y, w_init=w_init, b_init=b_init, floss=floss, fgradient=fgradient,
-                                 fmethod=fmethod, eta=eta, maxiter=maxiter, test_size=test_size, 
+                                 fmethod=fmethod, loss=loss, eta=eta, maxiter=maxiter, test_size=test_size, 
                                  n_splits=n_splits,ptrain=p, ptest=None)
 
       # Parallélisation avec joblib, en utilisant autant de jobs que de cœurs

@@ -1,16 +1,16 @@
-# Spherical Teacher-Student Perceptron
+# Spherical Teacher-Student Model
 
-Implementation from scratch of a Spherical Teacher-Student Perceptron, using Python and Numpy (and a bit of Scikit-Learn), and Matplotlib for visualization. This project was carried out as part of a research internship at the LISN, under the supervision of François LANDES. It focuses on studying class imbalance in classification tasks, based on a spherical Teacher-Student perceptron architecture. This approach helps analyze how imbalanced training data affects the performance in classification models.
+Implementation from scratch of a Spherical Teacher-Student Model, using Python and Numpy (and a bit of Scikit-Learn), and Matplotlib for visualization. This project was carried out as part of a research internship at the LISN, under the supervision of François LANDES. It focuses on studying class imbalance in classification tasks, based on a spherical Teacher-Student model architecture. This approach helps analyze how imbalanced training data affects the performance in classification models.
 
 The internship subject was based on a paper co-authored by my advisor: https://arxiv.org/abs/2501.11638
 
 # What does it do ?
 
-The program generates synthetic `Gaussian-distributed data` and assigns class labels using a `Teacher-Student perceptron model`. To make classification more challenging, it is possible to add `noise` to prevent the dataset from being `trivially linearly separable`. The generated dataset is then stored in the `/data` folder.
+The program generates synthetic `Gaussian-distributed data` and assigns class labels using a `Teacher-Student model`. To make classification more challenging, it is possible to add `noise` to prevent the dataset from being `trivially linearly separable`. The generated dataset is then stored in the `/data` folder.
 
 You can then use any dataset to train your `student`, choosing all `hyper-paramaters` (eta, maxiter, test_size, n_splits, loss and method). The program will train the student using a `cross-validation` by testing 42 different training proportions (ptrain values). You will get a graph with all results of cross-validation on all ptrain values, on the train and test set. The graph will be saved in the `/plots` folder and the results will be saved in the `/results` folder.
 
-The implemented perceptron follows a `spherical normalization` scheme. This means that each weight vector is `scaled by 1/sqrt(D)`, + ensuring weight magnitudes remain stable as the input dimension D increases. This normalization prevents overfitting due to large weight values in high-dimensional spaces.
+The implemented model follows a `spherical normalization` scheme. This means that each weight vector is `scaled by 1/sqrt(D)`, + ensuring weight magnitudes remain stable as the input dimension D increases. This normalization prevents overfitting due to large weight values in high-dimensional spaces.
 
 # How to use it ?
 
